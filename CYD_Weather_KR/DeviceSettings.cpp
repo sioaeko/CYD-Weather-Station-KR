@@ -16,6 +16,7 @@ void loadSettings(DeviceSettings& s) {
   s.landscape = DEFAULT_LANDSCAPE; s.invertColors = DEFAULT_INVERT_COLORS;
   strlcpy(s.wifiSsid, WIFI_SSID, sizeof(s.wifiSsid));
   strlcpy(s.wifiPassword, WIFI_PASSWORD, sizeof(s.wifiPassword));
+  if (validApiKey(OPENWEATHER_KEYS[0])) strlcpy(s.apiKey, OPENWEATHER_KEYS[0], sizeof(s.apiKey));
 
   Preferences p;
   if (!p.begin(NAMESPACE, true)) return;  // 아직 저장된 값이 없음
@@ -37,6 +38,7 @@ void loadSettings(DeviceSettings& s) {
     copyText(s.wifiPassword, sizeof(s.wifiPassword), p.getString("pass", ""));
   }
   copyText(s.adminPassword, sizeof(s.adminPassword), p.getString("admin", ""));
+  if (p.isKey("owm")) copyText(s.apiKey, sizeof(s.apiKey), p.getString("owm", ""));
   p.end();
 }
 
@@ -51,6 +53,9 @@ void saveSettings(const DeviceSettings& s) {
   p.putBool("sched", s.scheduleOn); p.putBool("land", s.landscape); p.putBool("auto", s.autoCycle); p.putBool("inv", s.invertColors);
   p.putString("ssid", s.wifiSsid); p.putString("pass", s.wifiPassword);
   p.putString("admin", s.adminPassword);
+  // 웹에서 넣은 키만 저장 (Secrets.h 에 있는 키는 그대로 두어 펌웨어를 다시 올리면 따라 바뀌게)
+  if (validApiKey(OPENWEATHER_KEYS[0]) && !strcmp(s.apiKey, OPENWEATHER_KEYS[0])) p.remove("owm");
+  else p.putString("owm", s.apiKey);
   p.end();
 }
 
@@ -71,6 +76,12 @@ Place resolvePlace(const DeviceSettings& s) {
 
 bool wifiConfigured(const DeviceSettings& s) {
   return s.wifiSsid[0] && strcmp(s.wifiSsid, "YOUR_WIFI_SSID") != 0;
+}
+
+bool validApiKey(const char* key) {
+  if (!key || strlen(key) != 32) return false;
+  for (const char* c = key; *c; ++c) if (!isxdigit(static_cast<unsigned char>(*c))) return false;
+  return true;
 }
 
 bool samePlace(const Place& a, const Place& b) {

@@ -111,6 +111,7 @@ void applySettings(const DeviceSettings& next) {
   }
   if (previous.autoCycle != settings.autoCycle) lastPageChange = millis();
   if (previous.invertColors != settings.invertColors) setDisplayInvert(settings.invertColors);
+  if (strcmp(previous.apiKey, settings.apiKey)) setWeatherApiKey(settings.apiKey);
   appliedBrightness = -1; updateBacklight();   // 밝기 · 일정 변경을 바로 반영
   dirty = true;
 }
@@ -230,6 +231,7 @@ void setup() {
   // 설정 웹 페이지가 끝까지 내려가지 않았음 (2026-11 실측: HT20 + 최대 출력에서 1400바이트 손실 0%).
   esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
   if (configured) WiFi.begin(settings.wifiSsid, settings.wifiPassword);
+  setWeatherApiKey(settings.apiKey);
   initClock(); startWeatherNetwork(place, configured); startWebPortal();
   Serial.printf("LOCATION %s (%s, %s) / Wi-Fi %s\n", place.name, place.latitude, place.longitude,
                 configured ? settings.wifiSsid : "(설정 필요)");

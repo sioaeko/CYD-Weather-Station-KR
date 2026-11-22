@@ -16,6 +16,8 @@ std::atomic<bool> requested{true}, refreshing{false};
 std::atomic<uint32_t> nextFetch{0};
 std::atomic<uint32_t> placeId{1};       // 지역이 바뀔 때마다 1 씩 증가
 std::atomic<bool> wifiConfigured{true};
+char sharedKey[33] = "";   // setWeatherApiKey 로 바뀜 (stateMutex 로 보호)
+char taskKey[33] = "";     // 날씨 작업이 매번 복사해서 씀
 constexpr int HTTP_TIMEOUT_MS = 15000;  // 신호가 약하면 응답이 느림 (8초에서 늘림)
 // 지역이 그대로일 때만 게시합니다. (받는 도중 지역을 바꾸면 이전 지역 결과가 화면에 섞이지 않게)
 bool publish(WeatherState& s) {
@@ -51,7 +53,7 @@ int fetchOpenWeather(const char* endpoint, const Place& where, JsonDocument& doc
   for (int key = 0; key < 2; ++key) {
     doc.clear();
     const String url = String("https://api.openweathermap.org/data/2.5/") + endpoint +
-      "?lat=" + where.latitude + "&lon=" + where.longitude + "&units=metric&appid=" + OPENWEATHER_KEYS[key];
+      "?lat=" + where.latitude + "&lon=" + where.longitude + "&units=metric&appid=" + (key ? OPENWEATHER_KEYS[1] : taskKey);
     const int status = fetchJson(url, doc, filter);
     if (status == 200) { activeKey = key + 1; return status; }
     if (key == 1 || OPENWEATHER_KEYS[1][0] == '\0' || (status != 401 && status != 403 && status != 429)) return status;
@@ -127,10 +129,17 @@ void networkTask(void*) {
     if (!manual && static_cast<int32_t>(millis() - nextFetch.load()) < 0) { vTaskDelay(pdMS_TO_TICKS(100)); continue; }
     refreshing.store(true); WeatherState next; copyWeatherState(next);
     const Place where = next.place;
+    xSemaphoreTake(stateMutex, portMAX_DELAY); memcpy(taskKey, sharedKey, sizeof(taskKey)); xSemaphoreGive(stateMutex);
     if (!wifiConfigured.load()) {
       // Wi-Fi 정보가 없으면 설정 웹(Wi-Fi 설정 모드)에서 입력할 때까지 기다립니다.
       strlcpy(next.status, "Wi-Fi 설정이 필요합니다", sizeof(next.status));
       next.currentHttp = next.forecastHttp = next.airHttp = NET_WIFI_OFFLINE;
+      nextFetch.store(millis() + RETRY_INTERVAL_MS);
+      publish(next); refreshing.store(false); continue;
+    }
+    if (!taskKey[0] && !OPENWEATHER_KEYS[1][0]) {
+      strlcpy(next.status, "API 키 설정이 필요합니다", sizeof(next.status));
+      next.currentHttp = next.forecastHttp = next.airHttp = NET_NO_API_KEY;
       nextFetch.store(millis() + RETRY_INTERVAL_MS);
       publish(next); refreshing.store(false); continue;
     }
@@ -176,6 +185,7 @@ const char* httpStatusText(int code) {
     case NET_JSON_ERROR: return "응답 해석 실패";
     case NET_BAD_DATA: return "데이터 형식 오류";
     case NET_NO_MEMORY: return "메모리 부족";
+    case NET_NO_API_KEY: return "API 키 설정이 필요합니다";
     case -1: return "서버 연결 실패";
     case -11: return "응답 시간 초과";
   }
@@ -207,6 +217,14 @@ void setWeatherPlace(const Place& place) {
 void setWeatherWifiConfigured(bool configured) {
   const bool was = wifiConfigured.exchange(configured);
   if (configured && !was) requested.store(true);
+}
+void setWeatherApiKey(const char* key) {
+  if (!stateMutex) { strlcpy(sharedKey, key, sizeof(sharedKey)); return; }
+  xSemaphoreTake(stateMutex, portMAX_DELAY);
+  const bool changed = strcmp(sharedKey, key) != 0;
+  strlcpy(sharedKey, key, sizeof(sharedKey));
+  xSemaphoreGive(stateMutex);
+  if (changed) requested.store(true);
 }
 void startWeatherNetwork(const Place& place, bool configured) {
   wifiConfigured.store(configured);

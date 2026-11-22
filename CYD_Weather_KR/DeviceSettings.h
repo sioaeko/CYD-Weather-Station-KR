@@ -13,6 +13,7 @@ struct DeviceSettings {
   bool invertColors = true;        // 패널 색 반전 (후기형 CYD 는 켜야 정상 색)
   char wifiSsid[33] = "", wifiPassword[65] = "";
   char adminPassword[33] = "";     // 비어 있으면 설정 웹에 비밀번호 없음
+  char apiKey[33] = "";            // OpenWeather API 키 (설정 웹에서 입력, 없으면 Secrets.h 의 첫 번째 키)
 };
 
 void loadSettings(DeviceSettings& settings);
@@ -20,6 +21,7 @@ void saveSettings(const DeviceSettings& settings);
 void resetSettings();                                 // 저장된 설정 모두 지우기 (기본값으로)
 Place resolvePlace(const DeviceSettings& settings);   // 프리셋 또는 직접 입력한 지역
 bool wifiConfigured(const DeviceSettings& settings);  // SSID 가 있고 예시 값이 아니면 true
+bool validApiKey(const char* key);                    // 32자리 16진수면 true
 bool samePlace(const Place& a, const Place& b);
 
 // ── CYD_Weather_KR.ino 에 구현: 설정 웹과 터치 버튼이 공통으로 씁니다 ──

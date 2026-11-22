@@ -25,7 +25,7 @@ char apName[24] = "";
 uint32_t lastConnectedMs = 0, connectedSinceMs = 0, restartAt = 0;
 constexpr uint32_t AP_AFTER_FAIL_MS = 30000;      // 이 시간 동안 연결 못 하면 설정 모드
 constexpr uint32_t AP_KEEP_AFTER_JOIN_MS = 180000; // 연결 성공 후 설정 모드를 유지할 시간 (새 IP 안내용)
-const char* FIRMWARE = "KR 1.2";
+const char* FIRMWARE = "KR 1.3";
 // 신호가 약하면(-80dBm 안팎) 1400바이트 프레임은 절반쯤 깨지지만 1000바이트 이하는 거의 다 통과합니다.
 // MTU 를 576 으로 낮춰 TCP 세그먼트를 536바이트로 만들면 설정 웹 응답이 끊기지 않습니다.
 constexpr uint16_t STA_MTU = 576;
@@ -118,6 +118,9 @@ void stateJson(JsonDocument& doc) {
   set["invertColors"] = s.invertColors;
   set["wifiSsid"] = wifiConfigured(s) ? s.wifiSsid : "";
   set["locked"] = s.adminPassword[0] != 0;
+  // 키 자체는 내보내지 않고 끝 4자리만 (어떤 키가 들어갔는지 구분용)
+  set["apiKeySet"] = validApiKey(s.apiKey);
+  set["apiKeyEnd"] = validApiKey(s.apiKey) ? s.apiKey + 28 : "";
 
   JsonArray presets = doc["presets"].to<JsonArray>();
   for (int i = 0; i < LOCATION_COUNT; ++i) {
@@ -183,6 +186,11 @@ void handleSettings() {
     if (strlen(pass) > 32) return sendError(422, "invalid", "비밀번호는 32자까지입니다", "adminPassword");
     if (pass[0] && strlen(pass) < 4) return sendError(422, "invalid", "비밀번호는 4자 이상으로 정해 주세요", "adminPassword");
     strlcpy(next.adminPassword, pass, sizeof(next.adminPassword));
+  }
+  if (body["apiKey"].is<const char*>()) {
+    String key = body["apiKey"].as<const char*>(); key.trim(); key.toLowerCase();
+    if (!validApiKey(key.c_str())) return sendError(422, "invalid", "API 키는 영문·숫자 32자리입니다", "apiKey");
+    strlcpy(next.apiKey, key.c_str(), sizeof(next.apiKey));
   }
   applySettings(next);
   JsonDocument doc; stateJson(doc); sendJson(200, doc);

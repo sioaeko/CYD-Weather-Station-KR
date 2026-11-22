@@ -152,6 +152,8 @@ input[type=range]{width:100%;height:28px;accent-color:var(--clock);background:no
 .setup h2{color:var(--sky)}
 .done{padding:18px;border-radius:var(--r-m);background:#18240f;display:grid;gap:10px}
 .done h2{color:var(--lime)}
+#key-sec.need{padding:18px;border-radius:var(--r-m);background:#26190c}
+#key-sec.need h2{color:var(--peach)}
 .done ol{margin:0;padding-left:20px;display:grid;gap:6px}
 .done code{font-family:inherit;color:var(--clock);font-weight:700}
 
@@ -205,9 +207,18 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
     <section id="setup" class="setup" hidden aria-labelledby="setup-h">
       <div class="head">
         <h2 id="setup-h">먼저 집 Wi-Fi 를 연결하세요</h2>
-        <p class="lead">지금은 기기가 직접 띄운 설정용 Wi-Fi(<span id="ap-name">CYD-Weather</span>)에 연결되어 있어요. 아래에서 집 Wi-Fi 를 고르면 기기가 다시 시작하고 날씨를 받기 시작합니다.</p>
+        <p class="lead">지금은 기기가 직접 띄운 설정용 Wi-Fi(<span id="ap-name">CYD-Weather</span>)에 연결되어 있어요. 아래에서 집 Wi-Fi 를 고르면 기기가 다시 시작하고 날씨를 받기 시작합니다. 처음이라면 Wi-Fi 를 저장하기 전에 아래 <a href="#key-sec">OpenWeather API 키</a>부터 넣어 두세요.</p>
       </div>
       <div id="wifi-form-slot"></div>
+    </section>
+
+    <section aria-labelledby="key-h" id="key-sec">
+      <div class="head"><h2 id="key-h">OpenWeather API 키</h2><p class="lead" id="key-now">-</p></div>
+      <form class="stack" id="key-form" novalidate>
+        <div class="field"><label for="apikey" id="key-l">API 키 (32자리)</label><input id="apikey" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="40" inputmode="text"><p class="err" id="e-apiKey"></p></div>
+        <p class="hint">무료 키는 <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener">openweathermap.org</a> 에 가입하면 바로 나와요. 새 키는 켜지기까지 최대 2시간쯤 걸립니다.</p>
+        <div class="actions"><button class="btn" type="submit" id="key-set">키 저장</button></div>
+      </form>
     </section>
 
     <section aria-labelledby="place-h">
@@ -356,7 +367,7 @@ function fieldError(field, msg) {
   document.querySelectorAll("[aria-invalid]").forEach(e => e.removeAttribute("aria-invalid"));
   if (!field) return;
   const box = $("e-" + field); if (box) box.textContent = msg;
-  const input = {customName:"c-name",customLat:"c-lat",customLon:"c-lon",ssid:"w-ssid",password:"w-pass",adminPassword:"admin"}[field];
+  const input = {customName:"c-name",customLat:"c-lat",customLon:"c-lon",ssid:"w-ssid",password:"w-pass",adminPassword:"admin",apiKey:"apikey"}[field];
   if (input) { $(input).setAttribute("aria-invalid", "true"); $(input).focus(); }
 }
 async function save(patch, okMsg) {
@@ -447,6 +458,10 @@ function render(s) {
   set("admin-l", g.locked ? "새 비밀번호 (4자 이상)" : "정할 비밀번호 (4자 이상)");
   set("admin-set", g.locked ? "비밀번호 바꾸기" : "비밀번호 정하기");
   $("admin-clear").hidden = !g.locked;
+  set("key-now", g.apiKeySet ? `키가 들어가 있어요 (끝자리 …${g.apiKeyEnd}). 바꿀 때만 새로 넣으세요.` : "아직 키가 없어요. 키를 넣어야 날씨를 받아옵니다.");
+  set("key-l", g.apiKeySet ? "새 API 키 (32자리)" : "API 키 (32자리)");
+  set("key-set", g.apiKeySet ? "키 바꾸기" : "키 저장");
+  $("key-sec").classList.toggle("need", !g.apiKeySet);
 
   set("i-host", "http://" + d.host); set("i-ip", d.ip || d.apIp || "-"); set("i-fw", d.firmware);
   const up = d.uptime; set("i-up", up >= 86400 ? `${Math.floor(up / 86400)}일 ${Math.floor(up % 86400 / 3600)}시간` : `${Math.floor(up / 3600)}시간 ${Math.floor(up % 3600 / 60)}분`);
@@ -622,6 +637,14 @@ $("wifi-form").addEventListener("submit", async e => {
     $("setup").hidden = true; $("wifi-form").hidden = true; $("done").hidden = false;
     $("done").scrollIntoView({block: "start"}); $("done").focus();
   } catch (err) { if (err.field) fieldError(err.field, err.message); toast(err.message, "error"); }
+});
+
+/* OpenWeather API 키 */
+$("key-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("apikey").value.trim().toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(v)) { fieldError("apiKey", "영문·숫자 32자리를 그대로 붙여 넣어 주세요"); return; }
+  if (await save({apiKey: v}, "키를 저장했어요. 곧 날씨를 받아옵니다")) $("apikey").value = "";
 });
 
 /* 관리 비밀번호 */

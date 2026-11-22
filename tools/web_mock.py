@@ -42,7 +42,8 @@ class Device:
         self.ap = ap
         self.settings = dict(preset=0, customName="", customLat="", customLon="", onHour=8, offHour=23,
                              dayBrightness=255, nightBrightness=0, schedule=True, landscape=True, autoCycle=False, invertColors=True,
-                             wifiSsid="" if ap else "우리집_2.4G", locked=bool(locked))
+                             wifiSsid="" if ap else "우리집_2.4G", locked=bool(locked),
+                             apiKeySet=not ap, apiKeyEnd="" if ap else "9f3c")
         self.admin = locked or ""
         self.refresh_until = 0
         self.scan_started = 0
@@ -168,6 +169,11 @@ class Handler(BaseHTTPRequestHandler):
             for key in ("onHour", "offHour", "dayBrightness", "nightBrightness", "schedule", "landscape", "autoCycle", "invertColors"):
                 if key in body:
                     s[key] = body[key]
+            if "apiKey" in body:
+                k = str(body["apiKey"]).strip().lower()
+                if not re.fullmatch(r"[0-9a-f]{32}", k):
+                    return self.error(422, "API 키는 영문·숫자 32자리입니다", "apiKey")
+                s.update(apiKeySet=True, apiKeyEnd=k[-4:])
             if "adminPassword" in body:
                 p = body["adminPassword"]
                 if p and len(p) < 4:

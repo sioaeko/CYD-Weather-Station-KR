@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CYD 날씨 시계 설치</title>
+<meta name="description" content="ESP32 CYD(2.8인치) 한국형 날씨 시계 펌웨어를 브라우저에서 바로 설치합니다.">
+<meta name="color-scheme" content="dark light">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+:root{
+  --canvas:#0b0c0b;--surface:#141613;--raised:#1c1f1b;--line:#2a2e28;--line-strong:#3a4037;
+  --text:#eef1ea;--muted:#a7aea2;--dim:#80887c;
+  --clock:#d8f0a0;--peach:#f8b070;--sky:#90d0f8;--lime:#a8e070;--danger:#ff7a6b;
+  --r-s:6px;--r-m:10px;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --canvas:#f5f6f2;--surface:#ffffff;--raised:#eceee7;--line:#dcdfd6;--line-strong:#c4c8bc;
+  --text:#171a15;--muted:#4f564a;--dim:#6b7266;--clock:#4f6f12;--peach:#a3530f;--sky:#1f6c9c;--lime:#3f7a12;--danger:#b3261e;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--canvas);color:var(--text);font:16px/1.6 var(--font);word-break:keep-all;overflow-wrap:anywhere}
+a{color:var(--sky);text-underline-offset:3px}
+code,kbd{font-family:var(--mono);font-size:.9em;background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.wrap{max-width:960px;margin:0 auto;padding:40px 16px 64px}
+header{display:grid;gap:24px;align-items:center;padding-bottom:32px;border-bottom:1px solid var(--line)}
+@media (min-width:820px){header{grid-template-columns:1fr 1fr;gap:40px}}
+.eyebrow{margin:0 0 8px;color:var(--clock);font:600 13px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+h1{margin:0;font-size:clamp(30px,6vw,44px);line-height:1.15;letter-spacing:-.02em}
+.lead{margin:14px 0 0;color:var(--muted);font-size:17px}
+.shot{margin:0;background:#000;border:1px solid var(--line-strong);border-radius:var(--r-m);padding:10px;box-shadow:0 18px 40px rgb(0 0 0/.35)}
+.shot img{display:block;width:100%;height:auto;image-rendering:pixelated;border-radius:2px}
+.shot figcaption{margin-top:8px;color:var(--dim);font-size:13px;text-align:center}
+
+.install{margin-top:32px;padding:24px;border-radius:var(--r-m);background:var(--surface);border:1px solid var(--line);display:grid;gap:16px}
+.install h2{margin:0;font-size:22px}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border:0;border-radius:var(--r-s);background:var(--clock);color:#11140d;font:700 17px var(--font);cursor:pointer}
+.btn:hover{filter:brightness(1.07)}
+.btn:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
+.ver{color:var(--dim);font:13px var(--mono)}
+.warn{margin:0;padding:12px 14px;border-radius:var(--r-s);background:color-mix(in srgb,var(--danger) 14%,transparent);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+.need{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+@media (min-width:640px){.need{grid-template-columns:repeat(3,1fr)}}
+.need li{padding:12px 14px;border-radius:var(--r-s);background:var(--raised);font-size:15px}
+.need b{display:block;margin-bottom:2px}
+.need span{color:var(--muted)}
+
+section{margin-top:48px}
+section>h2{margin:0 0 6px;font-size:24px}
+section>p.sub{margin:0 0 20px;color:var(--muted)}
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:14px}
+ol.steps>li{counter-increment:s;display:grid;grid-template-columns:40px 1fr;gap:14px;padding:16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
+ol.steps>li::before{content:counter(s);display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--raised);color:var(--clock);font:700 18px var(--mono)}
+ol.steps h3{margin:6px 0 4px;font-size:18px}
+ol.steps p{margin:0;color:var(--muted)}
+ol.steps p+p{margin-top:6px}
+.pair{display:grid;gap:14px;margin-top:12px}
+@media (min-width:640px){.pair{grid-template-columns:1fr 1fr}}
+.pair .shot{padding:6px}
+
+dl.faq{margin:0;display:grid;gap:0;border-top:1px solid var(--line)}
+dl.faq dt{padding:16px 0 4px;font-weight:700}
+dl.faq dd{margin:0;padding:0 0 16px;color:var(--muted);border-bottom:1px solid var(--line)}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--dim);font-size:14px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">ESP32 · CYD 2.8″</p>
+      <h1>CYD 날씨 시계<br>웹에서 바로 설치</h1>
+      <p class="lead">큰 시계, 오늘 날씨, 미세먼지 등급을 한글로 보여 주는 침대 옆 시계입니다. 보드를 USB로 연결하고 버튼 하나만 누르면 펌웨어와 화면 데이터가 함께 들어갑니다.</p>
+    </div>
+    <figure class="shot">
+      <img src="img/home.png" width="320" height="240" alt="기기 첫 화면: 큰 시계와 날짜, 맑음 아이콘, 기온·미세먼지·습도·바람 아이콘">
+      <figcaption>설치 후 첫 화면 (가로 모드)</figcaption>
+    </figure>
+  </header>
+
+  <div class="install" id="install">
+    <h2>설치하기</h2>
+    <ul class="need">
+      <li><b>보드</b><span>ESP32-2432S028R (CYD, 2.8인치 ILI9341)</span></li>
+      <li><b>브라우저</b><span>PC용 Chrome 또는 Edge</span></li>
+      <li><b>케이블</b><span>데이터 전송이 되는 USB 케이블</span></li>
+    </ul>
+    <esp-web-install-button manifest="manifest.json">
+      <button slot="activate" class="btn" type="button">기기에 설치</button>
+      <p slot="unsupported" class="warn">이 브라우저는 USB 기기에 접근할 수 없어요. PC에서 Chrome이나 Edge로 이 페이지를 열어 주세요. (휴대폰·Safari·Firefox는 안 됩니다)</p>
+      <p slot="not-allowed" class="warn">이 페이지를 <code>https://</code> 주소로 열어야 설치할 수 있어요.</p>
+    </esp-web-install-button>
+    <div class="btnrow">
+      <span class="ver" id="ver">펌웨어 KR 1.3</span>
+      <span class="ver">약 3.5MB · 1~2분 걸려요</span>
+    </div>
+  </div>
+
+  <section aria-labelledby="flow-h">
+    <h2 id="flow-h">설치하고 나서</h2>
+    <p class="sub">처음 켜면 아래 순서대로 한 번만 설정하면 됩니다.</p>
+    <ol class="steps">
+      <li>
+        <div>
+          <h3>포트 고르고 설치</h3>
+          <p>‘기기에 설치’를 누르고 목록에서 <code>USB-SERIAL CH340</code> (또는 CP210x) 포트를 고르세요. 처음 설치라면 ‘기기 지우기(Erase)’를 켜 두는 게 깔끔합니다.</p>
+          <p>포트가 안 보이면 <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html" target="_blank" rel="noopener">CH340 드라이버</a>를 설치하고 케이블을 다시 꽂아 보세요.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>터치 보정</h3>
+          <p>화면에 나오는 십자 표시를 차례로 콕 누르세요. 나중에 다시 하려면 화면을 길게 누르면 됩니다.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>휴대폰으로 설정용 Wi-Fi 접속</h3>
+          <p>기기가 <code>CYD-Weather-XXXX</code> 라는 Wi-Fi를 띄웁니다. 휴대폰으로 연결하면 설정 페이지가 저절로 열려요. 안 열리면 브라우저에서 <code>http://192.168.4.1</code> 로 들어가세요.</p>
+          <div class="pair">
+            <figure class="shot"><img src="img/setup.png" width="320" height="240" alt="기기 화면: Wi-Fi 설정 모드 안내와 설정용 Wi-Fi 이름"><figcaption>기기에 나오는 설정 모드 안내</figcaption></figure>
+            <figure class="shot"><img src="img/calibration.png" width="320" height="240" alt="기기 화면: 터치 보정용 십자 표시"><figcaption>터치 보정 화면</figcaption></figure>
+          </div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>OpenWeather API 키 넣기</h3>
+          <p>날씨와 미세먼지는 OpenWeather에서 받아요. <a href="https://home.openweathermap.org/users/sign_up" target="_blank" rel="noopener">무료 가입</a> 후 <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener">API keys</a> 에 나오는 32자리 키를 설정 페이지의 ‘OpenWeather API 키’ 칸에 붙여 넣으세요.</p>
+          <p>새로 만든 키는 켜지기까지 최대 2시간쯤 걸립니다. 그동안은 ‘API 키 거부(401)’가 보일 수 있어요.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>집 Wi-Fi 고르기</h3>
+          <p>같은 페이지에서 집 Wi-Fi를 고르고 비밀번호를 넣으면 기기가 다시 시작해 날씨를 받아옵니다. ESP32는 <b>2.4GHz</b>만 됩니다 (이름이 <code>_5G</code>로 끝나는 망은 안 돼요).</p>
+          <p>그다음부터는 같은 Wi-Fi의 휴대폰에서 기기 시스템 화면에 나오는 주소로 지역·화면·켜지는 시간을 바꿀 수 있어요.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="faq-h">
+    <h2 id="faq-h">자주 막히는 곳</h2>
+    <dl class="faq">
+      <dt>화면 바탕이 하얗고 색이 반대로 보여요</dt>
+      <dd>보드마다 패널이 달라요. 설정 페이지 ‘화면’에서 <b>색 반전</b>을 끄거나 켜 보세요. 기본값은 USB 포트가 두 개(USB-C + 마이크로 5핀)인 보드에 맞춰져 있습니다.</dd>
+      <dt>화면이 아예 까맣게 나와요</dt>
+      <dd>USB 전원이 약하면 백라이트가 안 켜질 수 있어요. 다른 포트나 케이블로 바꿔 보고, 그래도 안 되면 설치를 ‘기기 지우기’ 켠 상태로 다시 해 보세요.</dd>
+      <dt>‘서버 연결 실패’ 또는 웹 페이지가 계속 로딩돼요</dt>
+      <dd>대개 Wi-Fi 신호가 약해서예요. 시스템 화면의 Wi-Fi 신호가 -80dBm보다 낮으면 기기를 공유기 쪽으로 옮기거나 방향을 틀어 보세요.</dd>
+      <dt>업데이트하면 설정이 지워지나요?</dt>
+      <dd>‘기기 지우기’를 끄고 설치하면 Wi-Fi·API 키·지역 설정이 그대로 남습니다.</dd>
+    </dl>
+  </section>
+
+  <footer>
+    <span>소스 코드: <a href="https://github.com/sioaeko/CYD-Weather-Station-KR">GitHub</a> · MIT 라이선스</span>
+    <span>설치 도구: <a href="https://esphome.github.io/esp-web-tools/" target="_blank" rel="noopener">ESP Web Tools</a></span>
+  </footer>
+</div>
+</body>
+</html>

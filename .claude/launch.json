@@ -33,6 +33,18 @@
         "1234"
       ],
       "port": 8767
+    },
+    {
+      "name": "flasher",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8770",
+        "-d",
+        "docs"
+      ],
+      "port": 8770
     }
   ]
 }

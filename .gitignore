@@ -11,3 +11,5 @@
 .DS_Store
 .scratch/
 upstream/
+# Web flasher firmware (built without Secrets.h)
+!docs/firmware/*.bin

@@ -112,6 +112,16 @@
 
 ---
 
+## 웹에서 바로 설치 (가장 쉬움)
+
+**https://sioaeko.github.io/CYD-Weather-Station-KR/** 를 PC의 Chrome·Edge 로 열고, 보드를 USB 로 꽂은 뒤 **기기에 설치**를 누르면
+펌웨어와 `data` 폴더(아이콘·글꼴)가 한 번에 들어갑니다. 아두이노 IDE 도, 라이브러리도 필요 없습니다.
+
+설치 후에는 휴대폰으로 기기가 띄운 `CYD-Weather-XXXX` Wi-Fi 에 접속해 설정 페이지에서
+**OpenWeather API 키**와 **집 Wi-Fi** 를 넣으면 됩니다. 웹 설치용 펌웨어에는 API 키가 들어 있지 않습니다.
+
+직접 고쳐서 올리고 싶다면 아래 순서를 따르세요.
+
 ## 설치 순서
 
 ### 1. ESP32 보드 패키지 설치
@@ -142,6 +152,7 @@ https://espressif.github.io/arduino-esp32/package_esp32_index.json
 ### 3. API 키 입력 (Wi-Fi 는 선택)
 
 `CYD_Weather_KR/Secrets.example.h`를 같은 폴더에 **`Secrets.h`**로 복사한 뒤 값을 채웁니다.
+API 키도 비워 둘 수 있습니다. 그때는 설정 웹의 **OpenWeather API 키** 칸에 넣으면 기기(NVS)에 저장됩니다.
 Wi-Fi 이름과 비밀번호는 비워 둬도(예시 값 그대로 둬도) 됩니다. 그러면 처음 켤 때 기기가 **Wi-Fi 설정 모드**로 들어가고,
 휴대폰으로 집 Wi-Fi 를 고를 수 있습니다 ([설정 웹](#설정-웹-내부망) 참고).
 
@@ -471,6 +482,7 @@ USB 단자가 2개인 후기형 CYD 는 `true`(기본값), Micro-USB 하나뿐�
 | `tools/make_korean_fonts.py` | 한글 글꼴 생성기 |
 | `tools/preview/` | PC 화면 미리보기 |
 | `tools/build_web.py` · `tools/web_mock.py` | 설정 웹 압축 · 보드 없이 띄워 보는 가짜 기기 |
+| `docs/` | 웹 설치 페이지(GitHub Pages, ESP Web Tools)와 API 키 없이 빌드한 펌웨어 |
 
 ---
 
