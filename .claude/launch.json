@@ -1,0 +1,38 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/web_mock.py",
+        "--port",
+        "8765"
+      ],
+      "port": 8765
+    },
+    {
+      "name": "web-mock-ap",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/web_mock.py",
+        "--port",
+        "8766",
+        "--ap"
+      ],
+      "port": 8766
+    },
+    {
+      "name": "web-mock-locked",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/web_mock.py",
+        "--port",
+        "8767",
+        "--locked",
+        "1234"
+      ],
+      "port": 8767
+    }
+  ]
+}

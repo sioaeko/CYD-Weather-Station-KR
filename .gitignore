@@ -1,0 +1,13 @@
+# Personal credentials
+**/Secrets.h
+# Generated files
+.build/
+.cyd-build/
+**/__pycache__/
+*.pyc
+*.bin
+*.elf
+*.map
+.DS_Store
+.scratch/
+upstream/
