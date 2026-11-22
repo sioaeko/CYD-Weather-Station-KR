@@ -25,7 +25,7 @@ char apName[24] = "";
 uint32_t lastConnectedMs = 0, connectedSinceMs = 0, restartAt = 0;
 constexpr uint32_t AP_AFTER_FAIL_MS = 30000;      // 이 시간 동안 연결 못 하면 설정 모드
 constexpr uint32_t AP_KEEP_AFTER_JOIN_MS = 180000; // 연결 성공 후 설정 모드를 유지할 시간 (새 IP 안내용)
-const char* FIRMWARE = "KR 1.3";
+const char* FIRMWARE = "KR 1.4";
 // 신호가 약하면(-80dBm 안팎) 1400바이트 프레임은 절반쯤 깨지지만 1000바이트 이하는 거의 다 통과합니다.
 // MTU 를 576 으로 낮춰 TCP 세그먼트를 536바이트로 만들면 설정 웹 응답이 끊기지 않습니다.
 constexpr uint16_t STA_MTU = 576;
@@ -115,7 +115,7 @@ void stateJson(JsonDocument& doc) {
   set["onHour"] = s.onHour; set["offHour"] = s.offHour;
   set["dayBrightness"] = s.dayBrightness; set["nightBrightness"] = s.nightBrightness;
   set["schedule"] = s.scheduleOn; set["landscape"] = s.landscape; set["autoCycle"] = s.autoCycle;
-  set["invertColors"] = s.invertColors;
+  set["invertColors"] = s.invertColors; set["flipped"] = s.flipped; set["hour12"] = s.hour12;
   set["wifiSsid"] = wifiConfigured(s) ? s.wifiSsid : "";
   set["locked"] = s.adminPassword[0] != 0;
   // 키 자체는 내보내지 않고 끝 4자리만 (어떤 키가 들어갔는지 구분용)
@@ -181,6 +181,8 @@ void handleSettings() {
   if (body["landscape"].is<bool>()) next.landscape = body["landscape"];
   if (body["autoCycle"].is<bool>()) next.autoCycle = body["autoCycle"];
   if (body["invertColors"].is<bool>()) next.invertColors = body["invertColors"];
+  if (body["flipped"].is<bool>()) next.flipped = body["flipped"];
+  if (body["hour12"].is<bool>()) next.hour12 = body["hour12"];
   if (body["adminPassword"].is<const char*>()) {
     const char* pass = body["adminPassword"];
     if (strlen(pass) > 32) return sendError(422, "invalid", "비밀번호는 32자까지입니다", "adminPassword");

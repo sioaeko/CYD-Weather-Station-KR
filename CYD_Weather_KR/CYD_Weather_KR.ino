@@ -82,9 +82,13 @@ void updateBacklight() {
 const char* calibrationKey() { return settings.landscape ? "touch_l" : "touch_p"; }
 bool loadCalibration() {
   if (touchPreferences.getBytesLength(calibrationKey()) == sizeof(TouchCalibration)) {
-    touchPreferences.getBytes(calibrationKey(), &touchCalibration, sizeof(touchCalibration)); return true;
+    touchPreferences.getBytes(calibrationKey(), &touchCalibration, sizeof(touchCalibration));
+    if (settings.flipped) touchCalibration = flipCalibration(touchCalibration);
+    return true;
   }
-  touchCalibration = defaultTouchCalibration(); return false;
+  touchCalibration = defaultTouchCalibration();
+  if (settings.flipped) touchCalibration = flipCalibration(touchCalibration);
+  return false;
 }
 void startCalibration() {
   calibrating = true; calibrationStep = 0; calibrationStarted = millis();
@@ -104,10 +108,12 @@ void applySettings(const DeviceSettings& next) {
     setWeatherPlace(after);
     Serial.printf("LOCATION %s (%s, %s)\n", after.name, after.latitude, after.longitude);
   }
-  if (previous.landscape != settings.landscape) {
-    if (!setDisplayLandscape(settings.landscape)) { Serial.println("FATAL: screen buffer reallocation failed"); ESP.restart(); }
-    Serial.printf("ORIENTATION %s\n", settings.landscape ? "landscape 320x240" : "portrait 240x320");
-    if (!loadCalibration()) startCalibration();  // 이 방향으로 처음 돌렸다면 보정부터
+  if (previous.landscape != settings.landscape || previous.flipped != settings.flipped) {
+    if (!setDisplayOrientation(settings.landscape, settings.flipped)) { Serial.println("FATAL: screen buffer reallocation failed"); ESP.restart(); }
+    Serial.printf("ORIENTATION %s%s\n", settings.landscape ? "landscape 320x240" : "portrait 240x320", settings.flipped ? " flipped" : "");
+    if (previous.landscape != settings.landscape) { if (!loadCalibration()) startCalibration(); }  // 이 방향으로 처음 돌렸다면 보정부터
+    else touchCalibration = flipCalibration(touchCalibration);  // 뒤집기만 바뀌면 보정값도 같이 뒤집음
+    if (calibrating) calibrationDrawPending = true;
   }
   if (previous.autoCycle != settings.autoCycle) lastPageChange = millis();
   if (previous.invertColors != settings.invertColors) setDisplayInvert(settings.invertColors);
@@ -150,7 +156,8 @@ void calibrateSample(bool pressed, const TS_Point& raw) {
         TouchCalibration result;
         if (fitTouchCalibration(calibrationRaw, result)) {
           touchCalibration = result;
-          touchPreferences.putBytes(calibrationKey(), &touchCalibration, sizeof(touchCalibration));
+          const TouchCalibration stored = settings.flipped ? flipCalibration(result) : result;
+          touchPreferences.putBytes(calibrationKey(), &stored, sizeof(stored));
           calibrating = false; dirty = true; lastPageChange = millis(); Serial.println("CALIBRATION saved"); return;
         }
         calibrationStep = 0; calibrationFailed = true; Serial.println("CALIBRATION rejected; retry");
@@ -201,6 +208,7 @@ UiState uiState(bool refreshing) {
   UiState ui;
   ui.autoCycle = settings.autoCycle; ui.refreshing = refreshing; ui.scheduleOn = settings.scheduleOn;
   ui.onHour = settings.onHour; ui.offHour = settings.offHour; ui.nightBrightness = settings.nightBrightness;
+  ui.hour12 = settings.hour12;
   ui.apMode = webPortalApMode(); strlcpy(ui.apName, webPortalApName(), sizeof(ui.apName));
   return ui;
 }
@@ -209,7 +217,7 @@ void setup() {
   Serial.println("\nCYD Weather KR v1.2 (based on v3.1) / landscape+portrait / KST / touch / web settings");
   loadSettings(settings);
   touchPreferences.begin("cyd-kr-v1", false);
-  if (!beginDisplay(settings.landscape)) { Serial.println("FATAL: screen buffer allocation failed"); while (true) delay(1000); }
+  if (!beginDisplay(settings.landscape, settings.flipped)) { Serial.println("FATAL: screen buffer allocation failed"); while (true) delay(1000); }
   setDisplayInvert(settings.invertColors);
   appliedBrightness = settings.dayBrightness; setBacklight(appliedBrightness);
   if (!LittleFS.begin(false)) {

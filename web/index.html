@@ -41,6 +41,7 @@ h1,h2,h3,p{margin:0}
 .link[data-state=online]{color:var(--lime)}
 .link[data-state=offline]{color:var(--danger)}
 .clock{font-size:clamp(64px,19vw,92px);line-height:.95;font-weight:700;letter-spacing:-.02em;color:var(--clock)}
+.clock .ampm{font-size:.3em;letter-spacing:0;margin-right:.2em}
 .date{color:var(--text);font-size:17px}
 .reading{display:flex;align-items:center;gap:14px;padding-top:4px}
 .reading svg{flex:none}
@@ -261,6 +262,14 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
         </div>
       </fieldset>
       <div class="row">
+        <label class="row-label" for="flip">화면 180° 뒤집기<small>기기를 거꾸로 세워 두었을 때 켜세요. 터치도 같이 뒤집혀요</small></label>
+        <input class="switch" id="flip" type="checkbox" role="switch">
+      </div>
+      <div class="row">
+        <label class="row-label" for="h12">12시간제 시계<small>큰 시계를 "오후 8:15" 처럼 보여 줘요</small></label>
+        <input class="switch" id="h12" type="checkbox" role="switch">
+      </div>
+      <div class="row">
         <label class="row-label" for="invert">화면 색 반전<small>바탕이 하얗고 색이 반대로 보이면 바꿔 보세요 (USB 단자 2개인 CYD 는 켬)</small></label>
         <input class="switch" id="invert" type="checkbox" role="switch">
       </div>
@@ -380,10 +389,13 @@ const pad = n => String(n).padStart(2, "0");
 const kst = epoch => new Date((epoch + offset) * 1000);
 const hm = epoch => { const d = kst(epoch); return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()); };
 const WEEK = "일월화수목금토";
+let hour12 = false;
+const clockText = d => { const h = d.getUTCHours(), m = pad(d.getUTCMinutes());
+  return hour12 ? `<span class="ampm">${h < 12 ? "오전" : "오후"}</span>${h % 12 || 12}:${m}` : `${pad(h)}:${m}`; };
 function tick() {
   if (!deviceEpoch) return;
   const now = deviceEpoch + Math.floor((performance.now() - fetchedAt) / 1000), d = kst(now);
-  $("clock").textContent = pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes());
+  $("clock").innerHTML = clockText(d);
   $("date").textContent = `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${WEEK[d.getUTCDay()]}요일`;
 }
 setInterval(tick, 1000);
@@ -451,6 +463,8 @@ function render(s) {
   document.querySelector(`input[name=orient][value=${g.landscape ? "land" : "port"}]`).checked = true;
   $("auto").checked = g.autoCycle;
   $("invert").checked = !!g.invertColors;
+  $("flip").checked = !!g.flipped;
+  $("h12").checked = !!g.hour12; hour12 = !!g.hour12; tick();
 
   set("wifi-now", d.online ? `${d.ssid} 에 연결됨 · 신호 ${signal(d.rssi)} (${d.rssi}dBm)` :
       d.ap ? `설정 모드: 기기가 "${d.apName}" Wi-Fi 를 띄우고 있어요` : `${g.wifiSsid || "저장된 Wi-Fi 없음"} · 연결 안 됨`);
@@ -582,6 +596,8 @@ let brightTimer = 0;
 
 document.querySelectorAll("input[name=orient]").forEach(r => r.addEventListener("change", e =>
   save({landscape: e.target.value === "land"}, e.target.value === "land" ? "가로 화면으로 바꿨어요" : "세로 화면으로 바꿨어요")));
+$("flip").addEventListener("change", e => save({flipped: e.target.checked}, e.target.checked ? "화면을 뒤집었어요" : "화면을 원래 방향으로 돌렸어요"));
+$("h12").addEventListener("change", e => save({hour12: e.target.checked}, e.target.checked ? "12시간제로 바꿨어요" : "24시간제로 바꿨어요"));
 $("invert").addEventListener("change", e => save({invertColors: e.target.checked}, "화면 색 설정을 바꿨어요 · 기기 화면을 확인해 보세요"));
 $("auto").addEventListener("change", e => save({autoCycle: e.target.checked}, e.target.checked ? "8초마다 화면을 넘겨요" : "자동 넘김을 껐어요"));
 $("refresh").addEventListener("click", async () => {

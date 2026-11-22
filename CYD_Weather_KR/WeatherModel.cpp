@@ -273,6 +273,12 @@ bool fitTouchCalibration(const int raw[4][2], TouchCalibration& r) {
   const float y = r.yx * raw[2][0] + r.yy * raw[2][1] + r.yc;
   return fabsf(x - (screenWidth() - CALIBRATION_MARGIN)) < 20 && fabsf(y - (screenHeight() - CALIBRATION_MARGIN)) < 20;
 }
+TouchCalibration flipCalibration(const TouchCalibration& c) {
+  TouchCalibration f = c;
+  f.xx = -c.xx; f.xy = -c.xy; f.xc = screenWidth() - 1 - c.xc;
+  f.yx = -c.yx; f.yy = -c.yy; f.yc = screenHeight() - 1 - c.yc;
+  return f;
+}
 void mapTouch(const TouchCalibration& c, int rx, int ry, int& x, int& y) {
   x = lroundf(c.xx * rx + c.xy * ry + c.xc); y = lroundf(c.yx * rx + c.yy * ry + c.yc);
   if (x < 0) x = 0;

@@ -12,11 +12,13 @@ extern TFT_eSPI tft;
 struct UiState {
   bool autoCycle = false, refreshing = false, scheduleOn = true;
   uint8_t onHour = 8, offHour = 23, nightBrightness = 0;
+  bool hour12 = false;          // 큰 시계 12시간제
   bool apMode = false;          // Wi-Fi 설정 모드(기기 자체 Wi-Fi) 켜짐
   char apName[24] = "";
 };
-bool beginDisplay(bool landscape);
-bool setDisplayLandscape(bool landscape);  // 화면 방향 바꾸기 (화면 버퍼를 다시 만듦)
+bool beginDisplay(bool landscape, bool flipped);
+// 화면 방향 바꾸기 (가로/세로가 바뀌면 화면 버퍼를 다시 만듦). flipped = 180° 뒤집기
+bool setDisplayOrientation(bool landscape, bool flipped);
 void setDisplayInvert(bool invert);        // 패널 색 반전 (INVON/INVOFF)
 // 반 화면 버퍼로 위·아래를 나눠 그립니다. false = 버퍼를 못 만듦 (잠시 뒤 다시 호출)
 bool renderPage(const WeatherState& weather, int page, const UiState& ui);

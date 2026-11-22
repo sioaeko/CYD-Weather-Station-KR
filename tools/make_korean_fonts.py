@@ -88,7 +88,7 @@ def string_literals(source: str) -> list[str]:
 LARGE_SOURCES = {"WeatherModel.cpp", "All_Settings.h"}
 CLOCK_CHARS = "0123456789:-"
 # 큰 글꼴로 그리는 DisplayUI.cpp 의 문구 (요일·연결 상태)
-LARGE_EXTRA = "월일요 날씨 받는 중 Wi-Fi 연결"
+LARGE_EXTRA = "월일요 날씨 받는 중 Wi-Fi 연결 오전 오후"
 
 
 def collect_characters() -> tuple[str, str, dict[str, int]]:

@@ -300,7 +300,32 @@ MoonInfo moonInfo() {
 // ───────────────────────────── 0. 홈 (대시보드) ─────────────────────────────
 // 세로: 아이콘 | 시계·날짜·요일 → 날씨 설명 → 정보 칸 2열x3줄 → 안내 한 줄
 // 가로: 아이콘 | 시계 / 날짜 요일 / 날씨 설명 → 정보 칸 3열x2줄 → 안내 한 줄
-void home(const WeatherState& s, bool refreshing) {
+// 큰 시계: 24시간제 "08:15" / 12시간제 "8:15" + 오전·오후. 오른쪽 끝(right)에 붙이고 숫자 폭을 돌려줍니다.
+const char* clockPeriod(time_t now) { struct tm t; localtime_r(&now, &t); return t.tm_hour < 12 ? "오전" : "오후"; }
+int bigClock(time_t now, bool hour12, int right, int y, int width, int clockFont) {
+  String digits = "--:--";
+  if (clockValid() && !hour12) digits = localTimeText(now);
+  else if (clockValid()) {
+    struct tm t; localtime_r(&now, &t); char buf[6];
+    snprintf(buf, sizeof(buf), "%d:%02d", t.tm_hour % 12 ? t.tm_hour % 12 : 12, t.tm_min); digits = buf;
+  }
+  text(digits, right - width, y, width, CLOCK, clockFont, 2);
+  return textWidth(digits, clockFont);
+}
+// 가로 화면: 오전·오후를 숫자 왼쪽 아래에 붙임. 자리가 모자라면(10~12시) 16px 로 세로로 쌓음. minX 보다 왼쪽으로는 안 감
+void clockPeriodLeft(time_t now, int digitsRight, int digitsW, int y, int clockFont, int minX) {
+  if (!clockValid()) return;
+  const char* period = clockPeriod(now);  // UTF-8 한글 두 글자 (3바이트씩)
+  font(clockFont); const int clockH = screen.fontHeight(), left = digitsRight - digitsW;
+  const int w = textWidth(period, FONT_G); font(FONT_G); const int h = screen.fontHeight();
+  if (left - 6 - w >= minX) { text(period, left - 6 - w, y + clockH - h - 8, w, CLOCK, FONT_G); return; }
+  const String first = String(period).substring(0, 3), second = String(period).substring(3);
+  const int cw = textWidth(first, FONT_M); font(FONT_M); const int ch = screen.fontHeight();
+  const int x = left - 3 - cw, bottom = y + clockH - 8;
+  if (x < minX) return;
+  text(first, x, bottom - 2 * ch - 1, cw, CLOCK, FONT_M); text(second, x, bottom - ch, cw, CLOCK, FONT_M);
+}
+void home(const WeatherState& s, bool refreshing, bool hour12) {
   const CurrentWeather& current = s.current; const WeatherPoint& p = current.point;
   const time_t now = time(nullptr);
   const bool valid = current.valid, air = airIsFresh(s, now), wide = screenLandscape();
@@ -321,16 +346,23 @@ void home(const WeatherState& s, bool refreshing) {
   if (wide) {
     if (valid) weatherIcon(p, 6, 26, 96); else screen.drawRoundRect(14, 34, 80, 80, 12, LINE);
     // 가로 화면은 머리맡에서 보기 좋게 시계를 66px 로 크게 그립니다.
-    text(clockValid() ? localTimeText(now) : "--:--", 106, 22, W - 114, CLOCK, FONT_CB, 2);
+    const int clockW = bigClock(now, hour12, W - 8, 22, W - 114, FONT_CB);
+    if (hour12) clockPeriodLeft(now, W - 8, clockW, 22, FONT_CB, 100);
     text(clockValid() ? koreanDate(now, false) + " " + weekday : String("시간 맞추는 중"), 106, 75, W - 114, WHITE, FONT_G, 2);
     text(condition, 106, 100, W - 114, valid ? LIME : MUTED, FONT_G, 2);
     divider(125);
   } else {
     if (valid) weatherIcon(p, 4, 28, 100); else screen.drawRoundRect(14, 38, 80, 80, 12, LINE);
-    text(clockValid() ? localTimeText(now) : "--:--", 104, 28, 128, CLOCK, FONT_C, 2);
+    bigClock(now, hour12, 232, 28, 128, FONT_C);
     if (clockValid()) {
       text(koreanDate(now, false), 104, 76, 128, WHITE, FONT_G, 2);
-      text(weekday, 104, 102, 128, WHITE, FONT_G, 2);
+      if (hour12) {  // 세로 화면은 시계 옆에 자리가 없어서 요일 뒤에 "일요일 오후"
+        const int periodW = textWidth(clockPeriod(now), FONT_G), gap = 6;
+        text(clockPeriod(now), 232 - periodW, 102, periodW, CLOCK, FONT_G);
+        text(weekday, 104, 102, 128 - periodW - gap, WHITE, FONT_G, 2);
+      } else {
+        text(weekday, 104, 102, 128, WHITE, FONT_G, 2);
+      }
     } else {
       text("시간 맞추는 중", 104, 84, 128, MUTED, FONT_S, 2);
     }
@@ -648,18 +680,21 @@ bool renderSetupScreen(const UiState& ui) {
   text("저장하면 기기가 다시 시작하고 날씨를 받아요", 8, H - (wide ? 34 : 44), W - 16, LIME, FONT_S, 1);
   });
 }
-bool setDisplayLandscape(bool landscape) {
+bool setDisplayOrientation(bool landscape, bool flipped) {
+  const bool resize = !screen.created() || screenLandscape() != landscape;
   setScreenLandscape(landscape);
   W = screenWidth(); H = screenHeight();
-  tft.setRotation(landscape ? LANDSCAPE_ROTATION : PORTRAIT_ROTATION); tft.fillScreen(BG);
-  // 방향이 바뀌면 반 화면 버퍼 크기도 바뀝니다 (가로 320x120 / 세로 240x160, 둘 다 38.4KB)
+  const uint8_t base = landscape ? LANDSCAPE_ROTATION : PORTRAIT_ROTATION;
+  tft.setRotation(flipped ? (base + 2) % 4 : base); tft.fillScreen(BG);
+  if (!resize) return true;
+  // 가로/세로가 바뀌면 반 화면 버퍼 크기도 바뀝니다 (가로 320x120 / 세로 240x160, 둘 다 38.4KB)
   screen.deleteSprite(); screen.setColorDepth(8);
   return screen.createSprite(W, H / 2) != nullptr;
 }
 void setDisplayInvert(bool invert) { tft.invertDisplay(invert); }
-bool beginDisplay(bool landscape) {
+bool beginDisplay(bool landscape, bool flipped) {
   tft.begin();
-  return setDisplayLandscape(landscape);
+  return setDisplayOrientation(landscape, flipped);
 }
 void showMessage(const char* line1, const char* line2, uint16_t color) {
   tft.fillScreen(BG); tft.loadFont(KR_FONT_MEDIUM); tft.setTextDatum(MC_DATUM);
@@ -690,7 +725,7 @@ void auditAssets() {
 bool renderPage(const WeatherState& weather, int page, const UiState& ui) {
   return drawFrame([&] {
     switch (wrapPage(page)) {
-      case 0: home(weather, ui.refreshing); break;
+      case 0: home(weather, ui.refreshing, ui.hour12); break;
       case 1: forecastPage(weather); break;
       case 2: conditionsPage(weather); break;
       case 3: systemPage(weather, ui); break;

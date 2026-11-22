@@ -95,7 +95,7 @@ inline constexpr float UMBRELLA_POP = 0.6f;           // 강수확률 60% 이상
 //   USB 단자가 2개(USB-C + Micro-USB)인 후기형 CYD → true,  Micro-USB 하나뿐인 초기형 CYD → false
 inline constexpr bool DEFAULT_INVERT_COLORS = true;
 inline constexpr bool DEFAULT_LANDSCAPE = true;    // 처음 켤 때: true = 가로(머리맡 추천, 큰 시계), false = 세로
-// TFT_eSPI 회전값. 세로가 거꾸로면 PORTRAIT_ROTATION 을 2 로, 가로가 거꾸로면 LANDSCAPE_ROTATION 을 3 으로.
+// TFT_eSPI 회전값. 기기를 거꾸로 세웠다면 설정 웹의 "화면 180° 뒤집기" 를 켜면 됩니다 (터치도 같이 뒤집힘).
 inline constexpr uint8_t PORTRAIT_ROTATION = 0;
 inline constexpr uint8_t LANDSCAPE_ROTATION = 1;
 // 터치 패널 회전값은 고정해 두고, 방향마다 터치 보정값을 따로 저장해서 맞춥니다.

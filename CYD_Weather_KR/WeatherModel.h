@@ -115,6 +115,8 @@ constexpr int CALIBRATION_MARGIN = 20;
 void calibrationTarget(int step, int& x, int& y);
 bool fitTouchCalibration(const int raw[4][2], TouchCalibration& result);
 void mapTouch(const TouchCalibration& calibration, int rawX, int rawY, int& x, int& y);
+// 화면을 180° 뒤집었을 때의 보정값 (두 번 하면 원래대로). 저장은 항상 뒤집지 않은 기준으로 합니다.
+TouchCalibration flipCalibration(const TouchCalibration& calibration);
 // 시스템 화면 버튼 6개 (세로 2열x3줄 / 가로 3열x2줄)
 enum SystemButton { BUTTON_REFRESH = 0, BUTTON_AUTO, BUTTON_LOCATION, BUTTON_ROTATE, BUTTON_CALIBRATE, BUTTON_SCHEDULE,
                     SYSTEM_BUTTON_COUNT };

@@ -52,14 +52,21 @@ int main(int argc, char** argv) {
   if (argc < 3) { fprintf(stderr, "usage: preview <data dir> <out dir>\n"); return 2; }
   g_dataRoot = argv[1]; const std::string out = argv[2];
   g_now = kst(2026, 11, 22, 8, 15);
-  beginDisplay(false); auditAssets();
+  beginDisplay(false, false); auditAssets();
   const WeatherState normal = sample(false), rainy = sample(true);
   UiState ui; ui.autoCycle = true;
   for (int o = 0; o < 2; ++o) {
-    setDisplayLandscape(o == 1);
+    setDisplayOrientation(o == 1, false);
     const std::string pre = out + (o ? "/l-" : "/");
     renderPage(normal, 0, ui); save(pre + "0-home.ppm");
     renderPage(rainy, 0, ui); save(pre + "0-home-rain.ppm");
+    {  // 12시간제: 오전 8:15 / 오후 12:47 (가장 넓은 시각)
+      UiState h12 = ui; h12.hour12 = true;
+      renderPage(normal, 0, h12); save(pre + "0-home-12h-am.ppm");
+      const time_t keep = g_now; g_now = kst(2026, 11, 22, 12, 47);
+      renderPage(normal, 0, h12); save(pre + "0-home-12h-pm.ppm");
+      renderPage(rainy, 0, h12); save(pre + "0-home-12h-pm-rain.ppm"); g_now = keep;
+    }
     renderPage(normal, 1, ui); save(pre + "1-forecast.ppm");
     renderPage(normal, 2, ui); save(pre + "2-details.ppm");
     renderPage(normal, 3, ui); save(pre + "3-system.ppm");
@@ -70,7 +77,7 @@ int main(int argc, char** argv) {
     renderSetupScreen(setup); save(pre + "7-setup.ppm");
   }
   // 아이콘 견본: 미세먼지 등급별 얼굴 / 기온별 온도계
-  setDisplayLandscape(true); screen.deleteSprite(); screen.createSprite(W, H); screen.fillSprite(BG);
+  setDisplayOrientation(true, false); screen.deleteSprite(); screen.createSprite(W, H); screen.fillSprite(BG);
   text("미세먼지 표정", 8, 6, 304, WHITE, FONT_M, 1);
   const char* grades[] = {"좋음", "보통", "나쁨", "매우나쁨", "없음"};
   for (int g = 0; g < 5; ++g) {

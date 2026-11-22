@@ -33,6 +33,8 @@ void loadSettings(DeviceSettings& s) {
   s.landscape = p.getBool("land", s.landscape);
   s.autoCycle = p.getBool("auto", s.autoCycle);
   s.invertColors = p.getBool("inv", s.invertColors);
+  s.flipped = p.getBool("flip", s.flipped);
+  s.hour12 = p.getBool("h12", s.hour12);
   if (p.isKey("ssid")) {
     copyText(s.wifiSsid, sizeof(s.wifiSsid), p.getString("ssid", ""));
     copyText(s.wifiPassword, sizeof(s.wifiPassword), p.getString("pass", ""));
@@ -51,6 +53,7 @@ void saveSettings(const DeviceSettings& s) {
   p.putUChar("onH", s.onHour); p.putUChar("offH", s.offHour);
   p.putUChar("dayB", s.dayBrightness); p.putUChar("nightB", s.nightBrightness);
   p.putBool("sched", s.scheduleOn); p.putBool("land", s.landscape); p.putBool("auto", s.autoCycle); p.putBool("inv", s.invertColors);
+  p.putBool("flip", s.flipped); p.putBool("h12", s.hour12);
   p.putString("ssid", s.wifiSsid); p.putString("pass", s.wifiPassword);
   p.putString("admin", s.adminPassword);
   // 웹에서 넣은 키만 저장 (Secrets.h 에 있는 키는 그대로 두어 펌웨어를 다시 올리면 따라 바뀌게)

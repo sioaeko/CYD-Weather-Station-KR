@@ -1,6 +1,6 @@
 {
   "name": "CYD 날씨 시계 (한국)",
-  "version": "KR 1.3",
+  "version": "KR 1.4",
   "new_install_prompt_erase": true,
   "builds": [
     {

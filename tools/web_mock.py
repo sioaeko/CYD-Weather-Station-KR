@@ -41,7 +41,7 @@ class Device:
     def __init__(self, ap, locked):
         self.ap = ap
         self.settings = dict(preset=0, customName="", customLat="", customLon="", onHour=8, offHour=23,
-                             dayBrightness=255, nightBrightness=0, schedule=True, landscape=True, autoCycle=False, invertColors=True,
+                             dayBrightness=255, nightBrightness=0, schedule=True, landscape=True, autoCycle=False, invertColors=True, flipped=False, hour12=False,
                              wifiSsid="" if ap else "우리집_2.4G", locked=bool(locked),
                              apiKeySet=not ap, apiKeyEnd="" if ap else "9f3c")
         self.admin = locked or ""
@@ -166,7 +166,7 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     return self.error(422, "경도는 -180~180 사이 숫자입니다 (예: 126.9780)", "customLon")
                 s.update(customName=name, customLat=f"{lat:.4f}", customLon=f"{lon:.4f}", preset=-1)
-            for key in ("onHour", "offHour", "dayBrightness", "nightBrightness", "schedule", "landscape", "autoCycle", "invertColors"):
+            for key in ("onHour", "offHour", "dayBrightness", "nightBrightness", "schedule", "landscape", "autoCycle", "invertColors", "flipped", "hour12"):
                 if key in body:
                     s[key] = body[key]
             if "apiKey" in body:

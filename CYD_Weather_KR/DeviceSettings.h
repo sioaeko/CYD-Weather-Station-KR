@@ -11,6 +11,8 @@ struct DeviceSettings {
   uint8_t dayBrightness = 255, nightBrightness = 0;
   bool scheduleOn = true, landscape = true, autoCycle = false;
   bool invertColors = true;        // 패널 색 반전 (후기형 CYD 는 켜야 정상 색)
+  bool flipped = false;            // 화면 180° 뒤집기 (기기를 거꾸로 세웠을 때)
+  bool hour12 = false;             // 큰 시계를 12시간제(오전/오후)로
   char wifiSsid[33] = "", wifiPassword[65] = "";
   char adminPassword[33] = "";     // 비어 있으면 설정 웹에 비밀번호 없음
   char apiKey[33] = "";            // OpenWeather API 키 (설정 웹에서 입력, 없으면 Secrets.h 의 첫 번째 키)
