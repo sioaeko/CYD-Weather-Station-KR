@@ -115,7 +115,8 @@
 ## 웹에서 바로 설치 (가장 쉬움)
 
 **https://sioaeko.github.io/CYD-Weather-Station-KR/** 를 PC의 Chrome·Edge 로 열고, 보드를 USB 로 꽂은 뒤 **기기에 설치**를 누르면
-펌웨어와 `data` 폴더(아이콘·글꼴)가 한 번에 들어갑니다. 아두이노 IDE 도, 라이브러리도 필요 없습니다.
+펌웨어(아이콘·글꼴 포함)가 한 번에 들어갑니다. 아두이노 IDE 도, 라이브러리도 필요 없습니다.
+그다음 업데이트는 설정 웹에서 Wi-Fi 로 할 수 있습니다.
 
 설치 후에는 휴대폰으로 기기가 띄운 `CYD-Weather-XXXX` Wi-Fi 에 접속해 설정 페이지에서
 **OpenWeather API 키**와 **집 Wi-Fi** 를 넣으면 됩니다. 웹 설치용 펌웨어에는 API 키가 들어 있지 않습니다.
@@ -138,12 +139,11 @@ https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
 ### 2. 라이브러리 설치
 
-**스케치 → 라이브러리 포함하기 → .ZIP 라이브러리 추가**로 [`libraries/`](libraries/) 폴더의 zip 4개를 차례로 추가합니다.
+**스케치 → 라이브러리 포함하기 → .ZIP 라이브러리 추가**로 [`libraries/`](libraries/) 폴더의 zip 3개를 차례로 추가합니다.
 
 | 라이브러리 | 버전 | 비고 |
 | --- | --- | --- |
 | TFT_eSPI | 2.5.44 | **CYD용 `User_Setup.h`가 이미 들어 있음** (스무스 글꼴 켜짐) |
-| TJpg_Decoder | 1.1.0 | 부팅 화면 |
 | ArduinoJson | 7.4.2 | API 응답 해석 |
 | XPT2046_Touchscreen | 1.4 | 터치 |
 
@@ -199,20 +199,17 @@ inline constexpr bool DEFAULT_LANDSCAPE = true;    // 처음 켤 때 방향: tru
 | Flash Size | 4MB (32Mb) |
 | Flash Mode | DIO |
 | Flash Frequency | 40MHz |
-| **Partition Scheme** | **No OTA (2MB APP/2MB SPIFFS)** |
+| **Partition Scheme** | **Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)** |
 | PSRAM | Disabled |
 | Upload Speed | 921600 (실패하면 115200) |
 
-Partition Scheme이 틀리면 컴파일할 때 바로 오류로 알려줍니다. 메뉴 이름은 SPIFFS지만 이 펌웨어는 그 영역을 LittleFS로 씁니다.
+Partition Scheme이 틀리면 컴파일할 때 바로 오류로 알려줍니다. 펌웨어 칸이 두 개라서 다음부터는 [Wi-Fi 로 업데이트](#wi-fi-로-펌웨어-업데이트-ota)할 수 있습니다.
 
-### 6. 업로드 (스케치 + data 폴더)
+### 6. 업로드
 
-1. **업로드** 버튼으로 스케치를 올립니다.
-2. LittleFS 업로더 플러그인을 설치합니다: [arduino-littlefs-upload](https://github.com/earlephilhower/arduino-littlefs-upload/releases)에서 `.vsix` 파일을 받아
-   `C:\Users\<사용자>\.arduinoIDE\plugins\` 폴더에 넣고 IDE를 다시 시작합니다.
-3. **시리얼 모니터를 닫고**, `Ctrl+Shift+P` → **Upload LittleFS to Pico/ESP8266/ESP32**를 실행합니다.
-   `CYD_Weather_KR/data/`의 날씨 아이콘, 달 모양, 바람 화살표, 큰 숫자 글꼴, 부팅 이미지가 올라갑니다.
-4. 보드의 **RST** 버튼을 누릅니다.
+**업로드** 버튼으로 스케치를 올리면 끝입니다. 날씨 아이콘, 달 모양, 바람 화살표, 큰 숫자 글꼴, 부팅 이미지는
+펌웨어 안(`Assets.h`)에 들어 있어서 `data` 폴더를 따로 올릴 필요가 없습니다.
+그림을 바꾸려면 `assets/` 의 BMP 를 고친 뒤 `python tools/make_assets.py` 를 실행하세요.
 
 ### 7. 첫 부팅: 터치 보정
 
@@ -264,9 +261,22 @@ http://cyd-weather-kr.local
 | OpenWeather API 키 | 키 넣기 · 바꾸기 (끝 4자리만 표시) |
 | Wi-Fi | 현재 연결과 신호, 주변 Wi-Fi 찾기, 다른 Wi-Fi 로 바꾸기 (저장하면 기기가 다시 시작) |
 | 관리 비밀번호 | 설정하면 이 페이지를 열 때 비밀번호를 물어봅니다. 바꾸기 · 없애기 |
+| 펌웨어 업데이트 | 최신 버전 확인 · 설치(GitHub 에서), `.bin` 파일 올리기 |
 | 기기 | 터치 보정 시작, 다시 시작, 주소 · IP · 펌웨어 · 가동 시간 · 남은 메모리 |
 
 바꾼 설정은 기기(NVS)에 저장되어 전원을 꺼도 유지되고, 밝기처럼 바로 보이는 값은 슬라이더를 움직이는 동안 기기 화면에 바로 반영됩니다.
+
+### Wi-Fi 로 펌웨어 업데이트 (OTA)
+
+설정 웹의 **펌웨어 업데이트** 칸에서 할 수 있습니다. 기기를 침대 옆에 고정해 둬도 USB 를 꽂을 필요가 없습니다.
+
+- **최신 버전 설치**: 휴대폰이 [웹 설치 페이지](https://sioaeko.github.io/CYD-Weather-Station-KR/)의 펌웨어를 받아 기기로 넘겨줍니다.
+  기기는 인터넷에서 직접 받지 않으므로 인증서나 메모리 걱정이 없습니다. 새 버전이 있으면 버튼이 켜집니다.
+- **파일로 올리기**: 직접 빌드한 `.bin`(아두이노 IDE **스케치 → 컴파일된 바이너리 내보내기**)을 고릅니다.
+- 펌웨어 칸이 두 개라, 받는 도중 끊기거나 잘못된 파일이면 원래 펌웨어로 그대로 켜집니다.
+  `CYDKR:OTA:IMAGE` 표식이 없는 파일(다른 기기용)은 받지 않습니다.
+- 설정·Wi-Fi·API 키·터치 보정은 그대로 남습니다. `Secrets.h` 에 넣은 API 키도 처음 켤 때 기기에 저장해 두므로,
+  키 없이 빌드된 공개 펌웨어로 업데이트해도 날씨를 계속 받습니다.
 
 ### Wi-Fi 설정 모드 (처음 켤 때 · Wi-Fi 를 바꿨을 때)
 
@@ -419,9 +429,11 @@ USB 단자가 2개인 후기형 CYD 는 `true`(기본값), Micro-USB 하나뿐�
 
 아무 화면이나 2초 길게 눌러 터치 보정을 다시 하세요. 보정값은 방향별로 저장되므로 세로와 가로에서 각각 한 번씩 하면 됩니다.
 
-### `LittleFS 데이터가 없습니다`
+### Wi-Fi 업데이트가 실패함
 
-6단계의 LittleFS 업로드를 하지 않았거나 Partition Scheme이 다릅니다. 같은 보드·포트·파티션 설정으로 `data` 폴더를 다시 올리세요.
+- **"이 기기용 펌웨어가 아닙니다"**: 다른 프로젝트의 .bin 이거나 KR 1.4 이하 버전입니다. KR 1.5 부터 Wi-Fi 업데이트를 받을 수 있습니다.
+- **연결이 끊김**: 신호가 약하면 1.6MB 를 보내다 끊길 수 있습니다. 실패해도 기존 펌웨어는 그대로라 기기는 원래대로 다시 켜집니다. 공유기 가까이에서 다시 해 보세요.
+- KR 1.4 이하(파티션이 "No OTA")인 기기는 Wi-Fi 업데이트를 할 수 없습니다. [웹 설치](https://sioaeko.github.io/CYD-Weather-Station-KR/)로 USB 를 통해 한 번만 올리면 그다음부터 됩니다.
 
 ### 날씨가 안 나옴
 
@@ -478,7 +490,8 @@ USB 단자가 2개인 후기형 CYD 는 `true`(기본값), Micro-USB 하나뿐�
 | `CYD_Weather_KR/WeatherModel.*` | 예보 가공, 한국어 표기, 등급 기준, 생활 안내, 터치 계산 (PC에서도 컴파일됨) |
 | `CYD_Weather_KR/KoreanFonts.h` | 자동 생성된 한글 글꼴 (직접 고치지 않음) |
 | `CYD_Weather_KR/All_Settings.h` | 지역, 시간대, 갱신 주기, 화면 일정, 화면 방향, 안내 기준, 핀 |
-| `CYD_Weather_KR/data/` | LittleFS에 올리는 아이콘·달·바람 화살표·숫자 글꼴·부팅 이미지 |
+| `CYD_Weather_KR/Assets.h` | 자동 생성된 그림·글꼴 묶음 (RLE 압축, 직접 고치지 않음) |
+| `assets/` | 아이콘·달·바람 화살표(BMP), 큰 숫자 글꼴, 부팅 이미지 원본 → `tools/make_assets.py` |
 | `libraries/` | 검증된 라이브러리 zip과 SHA-256 목록 |
 | `tools/make_korean_fonts.py` | 한글 글꼴 생성기 |
 | `tools/preview/` | PC 화면 미리보기 |

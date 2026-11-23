@@ -1,6 +1,6 @@
 {
   "name": "CYD 날씨 시계 (한국)",
-  "version": "KR 1.4",
+  "version": "KR 1.5",
   "new_install_prompt_erase": true,
   "builds": [
     {
@@ -9,8 +9,7 @@
         { "path": "firmware/bootloader.bin", "offset": 4096 },
         { "path": "firmware/partitions.bin", "offset": 32768 },
         { "path": "firmware/boot_app0.bin", "offset": 57344 },
-        { "path": "firmware/firmware.bin", "offset": 65536 },
-        { "path": "firmware/littlefs.bin", "offset": 2162688 }
+        { "path": "firmware/firmware.bin", "offset": 65536 }
       ]
     }
   ]

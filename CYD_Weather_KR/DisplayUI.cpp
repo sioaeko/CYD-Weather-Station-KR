@@ -11,14 +11,13 @@
  *   G  나눔고딕 Bold 22px  – 날씨 설명·날짜 (필요한 글자만)
  *   C  나눔고딕 Bold 46px  – 세로 화면 시계 숫자만
  *   CB 나눔고딕 Bold 66px  – 가로 화면 시계 숫자만 (머리맡에서도 잘 보이게)
- *   L  NSBold36.vlw (LittleFS) – 상세 화면의 큰 기온 (숫자와 ° 만) */
+ *   L  NSBold36.vlw (Assets.h) – 상세 화면의 큰 기온 (숫자와 ° 만) */
 #include "DisplayUI.h"
 #include "All_Settings.h"
 #include "NTP_Time.h"
 #include "WeatherNetwork.h"
 #include "KoreanFonts.h"
-#include <LittleFS.h>
-#include <TJpg_Decoder.h>
+#include "Assets.h"
 #include <WiFi.h>
 #include <math.h>
 
@@ -42,7 +41,7 @@ void font(int id) {
   else if (id == FONT_G) screen.loadFont(KR_FONT_LARGE);
   else if (id == FONT_C) screen.loadFont(KR_FONT_CLOCK);
   else if (id == FONT_CB) screen.loadFont(KR_FONT_CLOCK_BIG);
-  else if (id == FONT_L) screen.loadFont("fonts/NSBold36", LittleFS);
+  else if (id == FONT_L) screen.loadFont(FONT_NSBOLD36);
   selectedFont = id;
 }
 int textWidth(const String& value, int fontId) { font(fontId); return screen.textWidth(value); }
@@ -91,28 +90,41 @@ time_t dayNoonUtc(int32_t localDay) { return static_cast<time_t>(localDay) * 864
 bool stale(const WeatherState& s) { return s.current.valid && (time(nullptr) - s.current.fetched > 1800 || s.currentHttp != 200); }
 int worseDustGrade(const WeatherState& s) { return pm25Grade(s.pm25) > pm10Grade(s.pm10) ? pm25Grade(s.pm25) : pm10Grade(s.pm10); }
 
-// ───────────────────────── 비트맵 (LittleFS 24비트 BMP) ─────────────────────────
-uint16_t read16(File& f) { uint8_t b[2]; if (f.read(b, 2) != 2) return 0; return b[0] | b[1] << 8; }
-uint32_t read32(File& f) { uint8_t b[4]; if (f.read(b, 4) != 4) return 0; return uint32_t(b[0]) | uint32_t(b[1]) << 8 | uint32_t(b[2]) << 16 | uint32_t(b[3]) << 24; }
+// ──────────────── 비트맵 (펌웨어에 들어 있는 RLE 그림, tools/make_assets.py) ────────────────
+const uint8_t* findAsset(const char* name) {
+  for (const AssetEntry& e : ASSET_INDEX) if (!strcmp(e.name, name)) return ASSET_PACK + e.offset;
+  return nullptr;
+}
+// 한 줄을 풀어 RGB565 로. 끝나면 다음 줄 위치를 돌려줍니다. 망가진 데이터면 nullptr
+const uint8_t* decodeRow(const uint8_t* p, const uint8_t* end, uint16_t* out, int width) {
+  if (p + 2 > end) return nullptr;
+  const uint16_t length = p[0] | p[1] << 8; p += 2;
+  const uint8_t* rowEnd = p + length; if (rowEnd > end) return nullptr;
+  int x = 0;
+  while (p < rowEnd && x < width) {
+    const uint8_t n = *p++;
+    if (n & 0x80) {
+      const uint16_t c = p[0] | p[1] << 8; p += 2;
+      for (int i = 0; i <= (n & 0x7F) && x < width; ++i) out[x++] = c;
+    } else {
+      for (int i = 0; i <= n && x < width; ++i, p += 2) out[x++] = p[0] | p[1] << 8;
+    }
+  }
+  return x == width ? rowEnd : nullptr;
+}
 bool bitmap(const String& path, int x, int y, int size) {
   if (x < 0 || y < 0 || x + size > W || y + size > H) { ++clippingWarnings; return false; }
-  File file = LittleFS.open(path, "r");
-  if (!file || read16(file) != 0x4d42) return false;
-  read32(file); read32(file); const uint32_t offset = read32(file); read32(file);
-  const int32_t width = read32(file), height = read32(file);
-  if (read16(file) != 1 || read16(file) != 24 || read32(file) != 0 || width <= 0 || height <= 0 || width > 120 || height > 120) return false;
-  const int stride = (width * 3 + 3) & ~3;
-  uint8_t row[360]; int previousRow = -1;
+  const uint8_t* p = findAsset(path.c_str());
+  if (!p) return false;
+  const uint8_t* end = ASSET_PACK + ASSET_PACK_SIZE;
+  const int width = p[0], height = p[1]; p += 2;
+  if (!width || !height || width > 120 || height > 120) return false;  // 날씨 아이콘·달·화살표 (최대 120px)
+  uint16_t row[120]; int decoded = -1;
   for (int dy = 0; dy < size; ++dy) {
     const int sourceY = dy * height / size;
-    if (sourceY != previousRow) {
-      file.seek(offset + (height - 1 - sourceY) * stride);
-      if (file.read(row, stride) != stride) return false;
-      previousRow = sourceY;
-    }
+    while (decoded < sourceY) { p = decodeRow(p, end, row, width); if (!p) return false; ++decoded; }
     for (int dx = 0; dx < size; ++dx) {
-      const uint8_t* p = row + (dx * width / size) * 3;
-      const uint16_t color = (p[2] & 0xF8) << 8 | (p[1] & 0xFC) << 3 | p[0] >> 3;
+      const uint16_t color = row[dx * width / size];
       if (color) screen.drawPixel(x + dx, y + dy, color);
     }
   }
@@ -542,7 +554,7 @@ void systemPage(const WeatherState& s, const UiState& ui) {
   char countdown[24];
   snprintf(countdown, sizeof(countdown), "%02lu:%02lu 후", static_cast<unsigned long>(remaining / 60), static_cast<unsigned long>(remaining % 60));
   const bool online = WiFi.status() == WL_CONNECTED;
-  const String labels[] = {"지역", "현재 시각", "화면 일정", "Wi-Fi", "설정 웹", "날씨 · 예보", "대기질", "파일 · 메모리", "가동 · 다음 갱신"};
+  const String labels[] = {"지역", "현재 시각", "화면 일정", "Wi-Fi", "설정 웹", "날씨 · 예보", "대기질", "펌웨어 · 메모리", "가동 · 다음 갱신"};
   const String values[] = {
     String(String(where.name) + " " + String(where.latitude).substring(0, 5) + ", " + String(where.longitude).substring(0, 6)),
     clockValid() ? String(localTimeText(time(nullptr), "%H:%M:%S ") + TIMEZONE_LABEL) : String("NTP 동기화 중"),
@@ -551,7 +563,7 @@ void systemPage(const WeatherState& s, const UiState& ui) {
     online ? String("http://" + WiFi.localIP().toString()) : ui.apMode ? String("설정 모드 192.168.4.1") : String("-"),
     String(shortHttp(s.currentHttp) + " / " + shortHttp(s.forecastHttp) + " · 키" + String(s.activeKey)),
     String(shortHttp(s.airHttp) + (s.airValid ? String(" · " + localTimeText(s.airTimestamp) + " 기준") : String(""))),
-    String(String(fileCount) + "개" + (badFiles ? String("(오류" + String(badFiles) + ")") : String("")) + " · " + String(ESP.getFreeHeap() / 1024) + "KB"),
+    String(String(FIRMWARE_VERSION) + (badFiles ? String(" 그림오류" + String(badFiles)) : String("")) + " · " + String(ESP.getFreeHeap() / 1024) + "KB"),
     String(uptimeText() + " · " + (ui.refreshing ? String("받는 중") : remaining ? String(countdown) : String("곧")))};
   const int rowTop = wide ? 29 : 31, pitch = wide ? 14 : 16;
   for (int i = 0; i < 9; ++i) {
@@ -582,30 +594,14 @@ void systemPage(const WeatherState& s, const UiState& ui) {
          i == BUTTON_REFRESH && ui.refreshing ? MUTED : active ? GREEN : WHITE, font, 1);
   }
 }
-bool jpgOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* pixels) {
-  if (y >= H) return false;
-  tft.pushImage(x, y, w, h, pixels); return true;
-}
-void scanDirectory(const char* path) {
-  File directory = LittleFS.open(path);
-  if (!directory || !directory.isDirectory()) { ++badFiles; return; }
-  for (File f = directory.openNextFile(); f; f = directory.openNextFile()) {
-    if (f.isDirectory()) continue;
-    ++fileCount;
-    const String name = f.name();
-    if (f.size() == 0) { ++badFiles; continue; }
-    if (name.endsWith(".bmp")) {
-      const bool header = read16(f) == 0x4d42; read32(f); read32(f); const uint32_t offset = read32(f); read32(f);
-      const uint32_t w = read32(f), h = read32(f);
-      const bool format = read16(f) == 1 && read16(f) == 24 && read32(f) == 0;
-      const uint32_t bytes = offset + ((w * 3 + 3) & ~3U) * h;
-      if (!header || !format || w == 0 || w > 120 || h == 0 || h > 120 || f.size() < bytes) ++badFiles;
-    } else if (name.endsWith(".jpg")) {
-      if (f.read() != 0xff || f.read() != 0xd8) ++badFiles;
-    } else if (name.endsWith(".vlw")) {
-      uint8_t first[4]; if (f.read(first, 4) != 4 || first[0] || first[1] || first[2] || first[3] == 0) ++badFiles;
-    }
-  }
+// 그림을 끝까지 한 번 풀어 보며 데이터가 온전한지 확인
+bool assetIntact(const AssetEntry& e) {
+  const uint8_t* p = ASSET_PACK + e.offset; const uint8_t* end = ASSET_PACK + ASSET_PACK_SIZE;
+  const int width = p[0], height = p[1]; p += 2;
+  if (!width || !height) return false;
+  uint16_t row[255];
+  for (int y = 0; y < height; ++y) if (!(p = decodeRow(p, end, row, width))) return false;
+  return true;
 }
 }
 // ── 글꼴에 글자가 있는지: VLW 헤더(24바이트) 뒤 글자마다 28바이트, 첫 4바이트가 유니코드(빅엔디언) ──
@@ -702,12 +698,32 @@ void showMessage(const char* line1, const char* line2, uint16_t color) {
   tft.setTextColor(TFT_WHITE, BG); tft.drawString(line2, W / 2, H / 2 + 14);
   tft.unloadFont();
 }
+void showUpdateProgress(int percent, const char* detail) {
+  static int shown = -2;
+  if (percent >= 0 && percent == shown) return;
+  const bool first = shown == -2 || percent < 0; shown = percent;
+  const int barW = W - 60, barX = 30, barY = H / 2 + 6;
+  if (first) {
+    tft.fillScreen(BG); tft.loadFont(KR_FONT_MEDIUM); tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(percent < 0 ? RED : CLOCK, BG);
+    tft.drawString(percent < 0 ? "업데이트 실패" : "펌웨어 업데이트 중", W / 2, H / 2 - 30);
+    tft.setTextColor(MUTED, BG); tft.drawString(detail, W / 2, H / 2 + 44);
+    tft.unloadFont();
+    tft.drawRoundRect(barX - 2, barY - 2, barW + 4, 16, 4, LINE);
+  }
+  if (percent >= 0) tft.fillRect(barX, barY, barW * (percent > 100 ? 100 : percent) / 100, 12, CLOCK);
+}
 void showBootSplash(const char* placeName) {
   const bool wide = screenLandscape();
-  TJpgDec.setJpgScale(1); TJpgDec.setSwapBytes(true); TJpgDec.setCallback(jpgOutput);
-  uint16_t jw = 0, jh = 0;
-  if (LittleFS.exists("/splash/OpenWeather.jpg") && TJpgDec.getFsJpgSize(&jw, &jh, "/splash/OpenWeather.jpg", LittleFS) == JDR_OK)
-    TJpgDec.drawFsJpg((W - jw) / 2, wide ? 26 : 70, "/splash/OpenWeather.jpg", LittleFS);
+  // 부팅 이미지(240x124)는 화면 버퍼를 거치지 않고 한 줄씩 바로 보냅니다
+  if (const uint8_t* p = findAsset("/splash/OpenWeather")) {
+    const int sw = p[0], sh = p[1], sx = (W - sw) / 2, sy = wide ? 26 : 70; p += 2;
+    uint16_t row[255];
+    for (int y = 0; y < sh && p; ++y) {
+      p = decodeRow(p, ASSET_PACK + ASSET_PACK_SIZE, row, sw);
+      if (p) tft.pushImage(sx, sy + y, sw, 1, row);
+    }
+  }
   // 22px 글꼴에 없는 글자가 있는 지역 이름(직접 입력)은 16px 글꼴로
   tft.loadFont(fontHasAll(KR_FONT_LARGE, placeName) ? KR_FONT_LARGE : KR_FONT_MEDIUM);
   tft.setTextColor(CLOCK, BG); tft.setTextDatum(MC_DATUM);
@@ -718,9 +734,9 @@ void showBootSplash(const char* placeName) {
   tft.unloadFont();
 }
 void auditAssets() {
-  fileCount = badFiles = 0;
-  for (const char* path : {"/icon", "/icon50", "/moon", "/wind", "/fonts", "/splash"}) scanDirectory(path);
-  Serial.printf("ASSETS files=%d errors=%d\n", fileCount, badFiles);
+  fileCount = ASSET_COUNT; badFiles = 0;
+  for (const AssetEntry& e : ASSET_INDEX) if (!assetIntact(e)) { ++badFiles; Serial.printf("ASSET broken %s\n", e.name); }
+  Serial.printf("ASSETS images=%d errors=%d\n", fileCount, badFiles);
 }
 bool renderPage(const WeatherState& weather, int page, const UiState& ui) {
   return drawFrame([&] {

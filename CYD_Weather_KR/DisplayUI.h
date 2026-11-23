@@ -28,4 +28,6 @@ bool renderSetupScreen(const UiState& ui);   // Wi-Fi 설정 모드 안내 화�
 // 기기 화면 글꼴(16px)에 없는 글자만 모아 돌려줍니다. 설정 웹에서 지역 이름을 확인할 때 씁니다.
 String missingGlyphs(const char* utf8);
 void showMessage(const char* line1, const char* line2, uint16_t color);
+// Wi-Fi 업데이트 진행 화면. percent < 0 이면 실패 표시
+void showUpdateProgress(int percent, const char* detail);
 void auditAssets();

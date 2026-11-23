@@ -28,7 +28,7 @@ def main() -> None:
     cmd = [args.cxx, "-std=c++17", "-O1", "-w", f"-I{HERE / 'fake'}", "-D_CRT_SECURE_NO_WARNINGS",
            str(HERE / "preview.cpp"), str(HERE / "fake" / "fake_impl.cpp"), "-o", str(exe)]
     subprocess.run(cmd, check=True)
-    result = subprocess.run([str(exe), str(ROOT / "CYD_Weather_KR" / "data"), str(BUILD)])
+    result = subprocess.run([str(exe), str(ROOT / "assets"), str(BUILD)])
     OUT.mkdir(exist_ok=True)
     shots = sorted(BUILD.glob("*.ppm"))
     for ppm in shots:

@@ -144,6 +144,15 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return
         length = int(self.headers.get("Content-Length") or 0)
+        if url.path == "/api/update":  # 진짜 기기처럼: ESP32 이미지(0xE9)이고 표식 글자가 들어 있어야 받음
+            raw = self.rfile.read(length)
+            start = raw.find(b"\r\n\r\n") + 4
+            if raw[start:start + 1] != b"\xe9":
+                return self.error(500, "ESP32 펌웨어(.bin) 파일이 아닙니다")
+            if b"CYDKR:OTA:IMAGE:1" not in raw:
+                return self.error(422, "이 기기(CYD 날씨 시계)용 펌웨어가 아닙니다")
+            time.sleep(1.5)
+            return self.send(200, {"ok": True, "bytes": len(raw)})
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
         except json.JSONDecodeError:

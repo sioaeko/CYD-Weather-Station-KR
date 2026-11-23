@@ -8,6 +8,7 @@
 #include <esp_netif_net_stack.h>
 #include <lwip/netif.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <math.h>
 #include "WebPortal.h"
 #include "All_Settings.h"
@@ -25,7 +26,13 @@ char apName[24] = "";
 uint32_t lastConnectedMs = 0, connectedSinceMs = 0, restartAt = 0;
 constexpr uint32_t AP_AFTER_FAIL_MS = 30000;      // 이 시간 동안 연결 못 하면 설정 모드
 constexpr uint32_t AP_KEEP_AFTER_JOIN_MS = 180000; // 연결 성공 후 설정 모드를 유지할 시간 (새 IP 안내용)
-const char* FIRMWARE = "KR 1.4";
+// ── Wi-Fi 업데이트 (POST /api/update, multipart 로 .bin 파일) ──
+struct OtaState {
+  bool active = false, rejected = false, foreign = false;
+  size_t received = 0, total = 0, markerMatched = 0;
+  bool markerFound = false;
+  char error[80] = "";
+} ota;
 // 신호가 약하면(-80dBm 안팎) 1400바이트 프레임은 절반쯤 깨지지만 1000바이트 이하는 거의 다 통과합니다.
 // MTU 를 576 으로 낮춰 TCP 세그먼트를 536바이트로 만들면 설정 웹 응답이 끊기지 않습니다.
 constexpr uint16_t STA_MTU = 576;
@@ -76,7 +83,7 @@ void stateJson(JsonDocument& doc) {
   WeatherState w; copyWeatherState(w);
   const time_t now = time(nullptr);
   JsonObject d = doc["device"].to<JsonObject>();
-  d["firmware"] = FIRMWARE; d["uptime"] = millis() / 1000; d["heapKb"] = ESP.getFreeHeap() / 1024;
+  d["firmware"] = FIRMWARE_VERSION; d["uptime"] = millis() / 1000; d["heapKb"] = ESP.getFreeHeap() / 1024;
   d["host"] = String(WEB_HOSTNAME) + ".local";
   const bool online = WiFi.status() == WL_CONNECTED;
   d["online"] = online;
@@ -288,11 +295,64 @@ void stopAccessPoint() {
 }
 }
 
+bool authorizedQuiet() {
+  const char* admin = currentSettings().adminPassword;
+  return !admin[0] || constantTimeEqual(server.header("X-Admin-Password").c_str(), admin);
+}
+void otaFail(const char* message) {
+  if (!ota.error[0]) strlcpy(ota.error, message, sizeof(ota.error));
+  if (Update.isRunning()) Update.abort();
+  ota.active = false;
+  Serial.printf("OTA failed: %s\n", ota.error);
+}
+// 업로드 조각마다 불림: 받은 만큼 바로 다른 펌웨어 칸에 씁니다 (RAM 에 전체를 올리지 않음)
+void handleUpdateUpload() {
+  HTTPUpload& up = server.upload();
+  if (up.status == UPLOAD_FILE_START) {
+    ota = OtaState{};
+    if (!authorizedQuiet()) { ota.rejected = true; return; }
+    const String length = server.header("Content-Length");
+    ota.total = length.toInt();
+    Serial.printf("OTA start %s (%u bytes)\n", up.filename.c_str(), static_cast<unsigned>(ota.total));
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) { otaFail("펌웨어 칸을 열 수 없습니다"); return; }
+    ota.active = true; showUpdateProgress(0, "전원을 끄지 마세요");
+  } else if (up.status == UPLOAD_FILE_WRITE) {
+    if (!ota.active) return;
+    if (ota.received == 0 && up.currentSize && up.buf[0] != 0xE9) { otaFail("ESP32 펌웨어(.bin) 파일이 아닙니다"); return; }
+    for (size_t i = 0; i < up.currentSize && !ota.markerFound; ++i) {
+      const char c = static_cast<char>(up.buf[i]);
+      if (c == OTA_MARKER[ota.markerMatched]) { if (!OTA_MARKER[++ota.markerMatched]) ota.markerFound = true; }
+      else ota.markerMatched = c == OTA_MARKER[0] ? 1 : 0;
+    }
+    if (Update.write(up.buf, up.currentSize) != up.currentSize) { otaFail(Update.errorString()); return; }
+    ota.received += up.currentSize;
+    if (ota.total) showUpdateProgress(ota.received * 100 / ota.total, "전원을 끄지 마세요");
+  } else if (up.status == UPLOAD_FILE_END) {
+    if (!ota.active) return;
+    if (!ota.markerFound) { ota.foreign = true; otaFail("이 기기(CYD 날씨 시계)용 펌웨어가 아닙니다"); return; }
+    if (!Update.end(true)) { otaFail(Update.errorString()); return; }
+    ota.active = false; showUpdateProgress(100, "다시 시작합니다");
+    Serial.printf("OTA done %u bytes\n", static_cast<unsigned>(ota.received));
+  } else if (up.status == UPLOAD_FILE_ABORTED) {
+    otaFail("업로드가 끊겼습니다");
+  }
+}
+void handleUpdateDone() {
+  if (ota.rejected) return sendError(401, "auth", "관리 비밀번호가 필요합니다");
+  if (ota.error[0] || !ota.received) {
+    showUpdateProgress(-1, ota.error[0] ? ota.error : "파일이 비어 있습니다");
+    restartPending = true; restartAt = millis() + 4000;  // 실패 화면을 잠깐 보여 준 뒤 원래 펌웨어로 다시 시작
+    return sendError(ota.foreign ? 422 : 500, "update", ota.error[0] ? ota.error : "파일이 비어 있습니다");
+  }
+  JsonDocument doc; doc["ok"] = true; doc["bytes"] = ota.received; sendJson(200, doc);
+  restartPending = true; restartAt = millis() + 1500;
+}
+
 void startWebPortal() {
   const uint64_t mac = ESP.getEfuseMac();
   snprintf(apName, sizeof(apName), "CYD-Weather-%04X", static_cast<unsigned>((mac >> 32) & 0xFFFF));
-  const char* headers[] = {"X-Admin-Password"};
-  server.collectHeaders(headers, 1);
+  const char* headers[] = {"X-Admin-Password", "Content-Length"};
+  server.collectHeaders(headers, 2);
   server.on("/", HTTP_GET, handlePage);
   server.on("/api/state", HTTP_GET, handleState);
   server.on("/api/settings", HTTP_POST, handleSettings);
@@ -302,10 +362,11 @@ void startWebPortal() {
   server.on("/api/refresh", HTTP_POST, handleRefresh);
   server.on("/api/calibrate", HTTP_POST, handleCalibrate);
   server.on("/api/reboot", HTTP_POST, handleReboot);
+  server.on("/api/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
   server.onNotFound(handleNotFound);
   server.begin();
   if (!wifiConfigured(currentSettings())) startAccessPoint();
-  Serial.printf("WEB http://%s.local (port 80)\n", WEB_HOSTNAME);
+  Serial.printf("WEB http://%s.local (port 80) / firmware %s [%s]\n", WEB_HOSTNAME, FIRMWARE_VERSION, OTA_MARKER);
 }
 
 void handleWebPortal() {

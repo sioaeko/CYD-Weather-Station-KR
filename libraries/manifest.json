@@ -8,14 +8,6 @@
     "note": "Includes supplied CYD ILI9341 User_Setup.h"
   },
   {
-    "name": "TJpg_Decoder",
-    "version": "1.1.0",
-    "upstream": "https://github.com/Bodmer/TJpg_Decoder",
-    "archive": "libraries/TJpg_Decoder-1.1.0.zip",
-    "sha256": "b3d3b553b02065eeaf46ad46bb1d6ee0a1abb69c858bbf92f7ca78e49aa3a694",
-    "note": "Tested runtime sources"
-  },
-  {
     "name": "ArduinoJson",
     "version": "7.4.2",
     "upstream": "https://github.com/bblanchon/ArduinoJson",

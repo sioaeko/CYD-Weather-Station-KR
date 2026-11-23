@@ -106,3 +106,8 @@ inline constexpr int TOUCH_CLK_PIN = 25;
 inline constexpr int TOUCH_MISO_PIN = 39;
 inline constexpr int TOUCH_MOSI_PIN = 32;
 inline constexpr int BACKLIGHT_PIN = 21;
+
+// 펌웨어 버전 (설정 웹 · 시스템 화면 · Wi-Fi 업데이트 비교용). docs/manifest.json 의 version 과 같이 올리세요.
+inline constexpr char FIRMWARE_VERSION[] = "KR 1.5";
+// Wi-Fi 업데이트 때 이 글자가 들어 있는 펌웨어만 받습니다 (다른 기기용 .bin 을 잘못 올리는 것 방지).
+inline constexpr char OTA_MARKER[] = "CYDKR:OTA:IMAGE:1";

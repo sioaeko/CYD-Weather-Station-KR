@@ -74,7 +74,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div>
       <p class="eyebrow">ESP32 · CYD 2.8″</p>
       <h1>CYD 날씨 시계<br>웹에서 바로 설치</h1>
-      <p class="lead">큰 시계, 오늘 날씨, 미세먼지 등급을 한글로 보여 주는 침대 옆 시계입니다. 보드를 USB로 연결하고 버튼 하나만 누르면 펌웨어와 화면 데이터가 함께 들어갑니다.</p>
+      <p class="lead">큰 시계, 오늘 날씨, 미세먼지 등급을 한글로 보여 주는 침대 옆 시계입니다. 보드를 USB로 연결하고 버튼 하나만 누르면 됩니다. 그다음 업데이트는 휴대폰에서 Wi-Fi로 할 수 있어요.</p>
     </div>
     <figure class="shot">
       <img src="img/home.png" width="320" height="240" alt="기기 첫 화면: 큰 시계와 날짜, 맑음 아이콘, 기온·미세먼지·습도·바람 아이콘">
@@ -95,8 +95,8 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
       <p slot="not-allowed" class="warn">이 페이지를 <code>https://</code> 주소로 열어야 설치할 수 있어요.</p>
     </esp-web-install-button>
     <div class="btnrow">
-      <span class="ver" id="ver">펌웨어 KR 1.4</span>
-      <span class="ver">약 3.5MB · 1~2분 걸려요</span>
+      <span class="ver" id="ver">펌웨어 KR 1.5</span>
+      <span class="ver">약 1.7MB · 1분쯤 걸려요</span>
     </div>
   </div>
 
@@ -153,8 +153,10 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
       <dd>USB 전원이 약하면 백라이트가 안 켜질 수 있어요. 다른 포트나 케이블로 바꿔 보고, 그래도 안 되면 설치를 ‘기기 지우기’ 켠 상태로 다시 해 보세요.</dd>
       <dt>‘서버 연결 실패’ 또는 웹 페이지가 계속 로딩돼요</dt>
       <dd>대개 Wi-Fi 신호가 약해서예요. 시스템 화면의 Wi-Fi 신호가 -80dBm보다 낮으면 기기를 공유기 쪽으로 옮기거나 방향을 틀어 보세요.</dd>
+      <dt>업데이트할 때마다 USB를 꽂아야 하나요?</dt>
+      <dd>아니요. KR 1.5부터는 설정 페이지의 ‘펌웨어 업데이트’에서 Wi-Fi로 새 버전을 설치할 수 있어요. KR 1.4 이하라면 이 페이지로 USB 설치를 한 번만 하면 됩니다.</dd>
       <dt>업데이트하면 설정이 지워지나요?</dt>
-      <dd>‘기기 지우기’를 끄고 설치하면 Wi-Fi·API 키·지역 설정이 그대로 남습니다.</dd>
+      <dd>‘기기 지우기’를 끄고 설치하면 Wi-Fi·API 키·지역 설정이 그대로 남습니다. Wi-Fi 업데이트는 항상 그대로 남아요.</dd>
     </dl>
   </section>
 

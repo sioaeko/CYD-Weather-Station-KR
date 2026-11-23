@@ -3,6 +3,7 @@
 #include "../../CYD_Weather_KR/DisplayUI.cpp"
 #include "../../CYD_Weather_KR/WeatherModel.cpp"
 #include "../../CYD_Weather_KR/MoonPhase.ino"
+#include "../../CYD_Weather_KR/Assets.cpp"
 #include <string>
 
 static time_t g_now = 0;
@@ -97,6 +98,7 @@ int main(int argc, char** argv) {
   iconSun(190, 200, true); iconSun(232, 200, false);
   iconUmbrella(274, 200, SKY, false);
   screen.pushSprite(0, 0); save(out + "/6-icons.ppm");
+  setDisplayOrientation(true, false); showBootSplash("안양"); save(out + "/l-8-splash.ppm");
   if (!TFT_eSPI::missingGlyphs.empty()) {
     fprintf(stderr, "MISSING GLYPHS:");
     for (uint16_t c : TFT_eSPI::missingGlyphs) fprintf(stderr, " U+%04X", c);

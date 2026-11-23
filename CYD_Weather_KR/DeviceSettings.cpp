@@ -56,9 +56,9 @@ void saveSettings(const DeviceSettings& s) {
   p.putBool("flip", s.flipped); p.putBool("h12", s.hour12);
   p.putString("ssid", s.wifiSsid); p.putString("pass", s.wifiPassword);
   p.putString("admin", s.adminPassword);
-  // 웹에서 넣은 키만 저장 (Secrets.h 에 있는 키는 그대로 두어 펌웨어를 다시 올리면 따라 바뀌게)
-  if (validApiKey(OPENWEATHER_KEYS[0]) && !strcmp(s.apiKey, OPENWEATHER_KEYS[0])) p.remove("owm");
-  else p.putString("owm", s.apiKey);
+  // 키는 항상 기기에도 저장합니다. Secrets.h 키로 빌드한 펌웨어에서 키 없는 공개 펌웨어로
+  // Wi-Fi 업데이트해도 날씨를 계속 받을 수 있게.
+  p.putString("owm", s.apiKey);
   p.end();
 }
 

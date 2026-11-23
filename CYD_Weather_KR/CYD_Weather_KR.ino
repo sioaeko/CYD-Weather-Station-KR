@@ -11,7 +11,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include <LittleFS.h>
 #include <Preferences.h>
 #include <XPT2046_Touchscreen.h>
 #include "All_Settings.h"
@@ -23,8 +22,8 @@
 #include "WebPortal.h"
 #include <esp_wifi.h>
 
-#ifndef ARDUINO_PARTITION_no_ota
-#error "In Arduino IDE Tools > Partition Scheme select No OTA (2MB APP/2MB SPIFFS), then upload both the sketch and LittleFS data."
+#ifndef ARDUINO_PARTITION_min_spiffs
+#error "In Arduino IDE Tools > Partition Scheme select Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)."
 #endif
 
 SPIClass touchSPI(VSPI);
@@ -220,10 +219,6 @@ void setup() {
   if (!beginDisplay(settings.landscape, settings.flipped)) { Serial.println("FATAL: screen buffer allocation failed"); while (true) delay(1000); }
   setDisplayInvert(settings.invertColors);
   appliedBrightness = settings.dayBrightness; setBacklight(appliedBrightness);
-  if (!LittleFS.begin(false)) {
-    showMessage("LittleFS 데이터가 없습니다", "data 폴더를 먼저 업로드하세요", TFT_RED);
-    Serial.println("FATAL: LittleFS mount failed"); while (true) delay(1000);
-  }
   Serial.printf("Display setup=%d backlight=%d size=%dx%d\n", USER_SETUP_ID, TFT_BL, tft.width(), tft.height());
   const Place place = resolvePlace(settings);
   auditAssets(); showBootSplash(place.name);
@@ -239,6 +234,7 @@ void setup() {
   // 설정 웹 페이지가 끝까지 내려가지 않았음 (2026-11 실측: HT20 + 최대 출력에서 1400바이트 손실 0%).
   esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
   if (configured) WiFi.begin(settings.wifiSsid, settings.wifiPassword);
+  saveSettings(settings);  // 처음 켤 때 기본값(특히 API 키)을 NVS 에 남겨 둠. 값이 같으면 플래시에 쓰지 않음
   setWeatherApiKey(settings.apiKey);
   initClock(); startWeatherNetwork(place, configured); startWebPortal();
   Serial.printf("LOCATION %s (%s, %s) / Wi-Fi %s\n", place.name, place.latitude, place.longitude,
